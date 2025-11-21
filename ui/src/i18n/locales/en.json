@@ -100,6 +100,8 @@
   },
   "overview": {
     "title": "Overview",
+    "setup": "Finalize Installation",
+    "kubernetesResources": "Kubernetes Resources",
     "clusterStats": "Cluster Statistics",
     "recentEvents": "Recent Events",
     "resourceCharts": "Resource Charts",

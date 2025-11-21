@@ -162,7 +162,7 @@ func setupAPIRouter(r *gin.RouterGroup, cm *cluster.ClusterManager) {
 	api.GET("/clusters", authHandler.RequireAuth(), cm.GetClusters)
 	api.Use(authHandler.RequireAuth(), middleware.ClusterMiddleware(cm))
 	{
-		api.GET("/overview", handlers.GetOverview)
+		api.GET("/overview", handlers.GetTypesenseOverview)
 
 		promHandler := handlers.NewPromHandler()
 		api.GET("/prometheus/resource-usage-history", promHandler.GetResourceUsageHistory)
