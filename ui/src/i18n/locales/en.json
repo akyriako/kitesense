@@ -107,7 +107,11 @@
     "recentEvents": "Recent Events",
     "resourceCharts": "Resource Charts",
     "failedToLoad": "Failed to load overview data",
-    "unknownError": "Unknown error occurred"
+    "unknownError": "Unknown error occurred",
+    "nodes": "Kubernetes Nodes",
+    "tsclusters": "Typesense Clusters",
+    "tsoperators": "Typesense Kubernetes Operators (TyKO)",
+    "docsearchscrapers": "DocSearch Scrapers"
   },
   "pods": {
     "title": "Pods",

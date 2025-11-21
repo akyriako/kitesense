@@ -45,7 +45,7 @@ export function ClusterStatsCards({
 
   const statsConfig = [
     {
-      label: t('nav.nodes'),
+      label: t('overview.nodes'),
       value: stats.totalNodes,
       subValue: stats.readyNodes,
       icon: IconServer,
@@ -54,7 +54,7 @@ export function ClusterStatsCards({
       routePath: '/nodes',
     },
     {
-      label: t('nav.tsoperators'),
+      label: t('overview.tsoperators'),
       value: stats.totalOperators,
       subValue: stats.runningOperators,
       icon: IconClockCog,
@@ -63,7 +63,7 @@ export function ClusterStatsCards({
       routePath: '/tsoperators',
     },
     {
-      label: t('nav.tsclusters'),
+      label: t('overview.tsclusters'),
       value: stats.totalClusters,
       subValue: stats.runningClusters,
       icon: IconServerBolt,
@@ -72,7 +72,7 @@ export function ClusterStatsCards({
       routePath: '/tsclusters',
     },
     {
-      label: t('nav.docsearchscrapers'),
+      label: t('overview.docsearchscrapers'),
       value: stats.totalScrapers,
       subValue: stats.totalScrapers,
       icon: IconLinkPlus,
