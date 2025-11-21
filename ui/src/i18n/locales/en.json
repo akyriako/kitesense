@@ -110,7 +110,7 @@
     "unknownError": "Unknown error occurred",
     "nodes": "Kubernetes Nodes",
     "tsclusters": "Typesense Clusters",
-    "tsoperators": "Typesense Kubernetes Operators (TyKO)",
+    "tsoperators": "Typesense Operators",
     "docsearchscrapers": "DocSearch Scrapers"
   },
   "pods": {

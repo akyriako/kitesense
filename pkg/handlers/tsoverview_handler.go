@@ -152,9 +152,9 @@ func GetTypesenseOverview(c *gin.Context) {
 					if cronjob.Spec.Suspend == nil || !*cronjob.Spec.Suspend {
 						runningScrapers++
 					}
+					totalScrapers++
 				}
 			}
-			totalScrapers++
 		}
 	}
 

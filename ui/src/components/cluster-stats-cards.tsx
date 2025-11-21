@@ -5,6 +5,7 @@ import {
   IconServerBolt,
   IconClockCog,
   IconLinkPlus,
+  IconAlertTriangleFilled,
 } from '@tabler/icons-react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
@@ -74,7 +75,7 @@ export function ClusterStatsCards({
     {
       label: t('overview.docsearchscrapers'),
       value: stats.totalScrapers,
-      subValue: stats.totalScrapers,
+      subValue: stats.runningScrapers,
       icon: IconLinkPlus,
       color: 'text-red-600 dark:text-red-400',
       bgColor: 'bg-red-50 dark:bg-red-950/50',
@@ -97,28 +98,41 @@ export function ClusterStatsCards({
                   <div>
                     <CardDescription>{stat.label}</CardDescription>
                     <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-                      {stat.routePath ? (
-                        <Link
-                          to={stat.routePath}
-                          className="hover:text-primary/80 hover:underline transition-colors cursor-pointer"
-                        >
-                          {stat.value}
-                        </Link>
+                      {stat.subValue != null && stat.value != null ? (
+                        stat.routePath ? (
+                          <Link
+                            to={stat.routePath}
+                            className="hover:text-primary/80 hover:underline transition-colors cursor-pointer"
+                          >
+                            {stat.value}
+                          </Link>
+                        ) : (
+                          stat.value
+                        )
                       ) : (
-                        stat.value
+                        "-"
                       )}
                     </CardTitle>
                     <div className="text-sm text-muted-foreground">
-                      {stat.subValue === undefined ||
-                      stat.subValue === stat.value ? (
+                      {stat.subValue !== undefined && stat.value !== undefined &&
+                        stat.subValue === stat.value ? (
                         <div className="flex items-center gap-1">
                           <IconCircleCheckFilled className="size-4 text-green-600 flex-shrink-0" />
-                          All ready
+                          All Ready
                         </div>
                       ) : (
                         <div className="flex items-center gap-1">
-                          <IconAlertCircleFilled className="size-4 text-red-600 flex-shrink-0" />
-                          {stat.value - (stat.subValue || 0)} Not Ready
+                          {stat.subValue != null && stat.value != null ? (
+                            <>
+                              <IconAlertCircleFilled className="size-4 flex-shrink-0 text-amber-600" />
+                              {stat.value - stat.subValue} Not Ready
+                            </>
+                          ) : (
+                            <>
+                              <IconAlertTriangleFilled className="size-4 flex-shrink-0 text-yellow-600" />
+                              Not Available
+                            </>
+                          )}
                         </div>
                       )}
                     </div>
