@@ -1,10 +1,10 @@
 import {
   IconAlertCircleFilled,
   IconCircleCheckFilled,
-  IconNetwork,
   IconServer,
   IconServerBolt,
   IconClockCog,
+  IconLinkPlus,
 } from '@tabler/icons-react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
@@ -72,10 +72,10 @@ export function ClusterStatsCards({
       routePath: '/tsclusters',
     },
     {
-      label: t('nav.services'),
+      label: t('nav.docsearchscrapers'),
       value: stats.totalScrapers,
       subValue: stats.totalScrapers,
-      icon: IconNetwork,
+      icon: IconLinkPlus,
       color: 'text-red-600 dark:text-red-400',
       bgColor: 'bg-red-50 dark:bg-red-950/50',
       routePath: '/docsearchscrapers',

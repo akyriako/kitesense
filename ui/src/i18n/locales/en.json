@@ -69,6 +69,7 @@
     "tsclusters": "Clusters",
     "tsoperators": "Operators",
     "tsbackups": "Snapshot Backups",
+    "docsearchscrapers": "Scrapers",
     "pods": "Pods",
     "deployments": "Deployments",
     "statefulsets": "StatefulSets",
