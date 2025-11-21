@@ -9,6 +9,7 @@ import (
 	"github.com/zxh326/kite/pkg/common"
 	"github.com/zxh326/kite/pkg/model"
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/labels"
@@ -109,9 +110,51 @@ func GetTypesenseOverview(c *gin.Context) {
 	}
 
 	runningClusters := 0
+	runningScrapers := 0
+	totalScrapers := 0
 	for _, tsc := range tscs.Items {
 		if tsc.Status.Phase == "QuorumReady" {
 			runningClusters++
+		}
+
+		//// Get Scrapers
+		//scrapers := &batchv1.CronJobList{}
+		//ownerRef := metav1.OwnerReference{
+		//	APIVersion: tsc.APIVersion,
+		//	Kind:       tsc.Kind,
+		//	Name:       tsc.Name,
+		//	UID:        tsc.UID,
+		//}
+		//if err := cs.K8sClient.List(ctx, scrapers, &client.ListOptions{FieldSelector: fields.OneTermEqualSelector("metadata.ownerReferences.uid", string(ownerRef.UID))}); err != nil {
+		//	c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		//	return
+		//}
+		//
+		//for _, cronjob := range scrapers.Items {
+		//	if cronjob.Spec.Suspend == nil || !*cronjob.Spec.Suspend {
+		//		runningScrapers++
+		//	}
+		//	totalScrapers++
+		//}
+		// Get all cronjobs in the same namespace
+		cronjobs := &batchv1.CronJobList{}
+		if err := cs.K8sClient.List(ctx, cronjobs, &client.ListOptions{
+			Namespace: tsc.Namespace,
+		}); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		// Filter by owner reference and count non-suspended ones
+		for _, cronjob := range cronjobs.Items {
+			for _, owner := range cronjob.GetOwnerReferences() {
+				if owner.UID == tsc.UID {
+					if cronjob.Spec.Suspend == nil || !*cronjob.Spec.Suspend {
+						runningScrapers++
+					}
+				}
+			}
+			totalScrapers++
 		}
 	}
 
@@ -149,8 +192,8 @@ func GetTypesenseOverview(c *gin.Context) {
 		RunningOperators: runningOperators,
 		TotalClusters:    len(tscs.Items),
 		RunningClusters:  runningClusters,
-		TotalScrapers:    0,
-		RunningScrapers:  0,
+		TotalScrapers:    totalScrapers,
+		RunningScrapers:  runningScrapers,
 		PromEnabled:      cs.PromClient != nil,
 		Resource: common.ResourceMetric{
 			CPU: common.Resource{
