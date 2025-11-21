@@ -1,10 +1,10 @@
 import {
   IconAlertCircleFilled,
-  IconBox,
   IconCircleCheckFilled,
-  IconFolders,
   IconNetwork,
   IconServer,
+  IconServerBolt,
+  IconClockCog,
 } from '@tabler/icons-react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
@@ -54,29 +54,31 @@ export function ClusterStatsCards({
       routePath: '/nodes',
     },
     {
-      label: t('nav.pods'),
-      value: stats.totalPods,
-      subValue: stats.runningPods,
-      icon: IconBox,
-      color: 'text-green-600 dark:text-green-400',
-      bgColor: 'bg-green-50 dark:bg-green-950/50',
-      routePath: '/pods',
-    },
-    {
-      label: t('nav.namespaces'),
-      value: stats.totalNamespaces,
-      icon: IconFolders,
+      label: t('nav.tsoperators'),
+      value: stats.totalOperators,
+      subValue: stats.runningOperators,
+      icon: IconClockCog,
       color: 'text-purple-600 dark:text-purple-400',
       bgColor: 'bg-purple-50 dark:bg-purple-950/50',
-      routePath: '/namespaces',
+      routePath: '/tsoperators',
+    },
+    {
+      label: t('nav.tsclusters'),
+      value: stats.totalClusters,
+      subValue: stats.runningClusters,
+      icon: IconServerBolt,
+      color: 'text-orange-600 dark:text-orange-400',
+      bgColor: 'bg-orange-50 dark:bg-orange-950/50',
+      routePath: '/tsclusters',
     },
     {
       label: t('nav.services'),
-      value: stats.totalServices,
+      value: stats.totalScrapers,
+      subValue: stats.totalScrapers,
       icon: IconNetwork,
-      color: 'text-orange-600 dark:text-orange-400',
-      bgColor: 'bg-orange-50 dark:bg-orange-950/50',
-      routePath: '/services',
+      color: 'text-red-600 dark:text-red-400',
+      bgColor: 'bg-red-50 dark:bg-red-950/50',
+      routePath: '/docsearchscrapers',
     },
   ]
 

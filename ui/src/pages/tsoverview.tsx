@@ -14,10 +14,7 @@ export function TypesenseOverview() {
   const { user } = useAuth()
   const [isDismissed] = useState(() => {
     const dismissed = localStorage.getItem('settings-hint-dismissed')
-    if (dismissed === 'true') {
-      return true
-    }
-    return false
+    return dismissed === 'true';
   })
 
   const [timeRange] = useState('30m')
@@ -50,19 +47,33 @@ export function TypesenseOverview() {
 
       <ClusterStatsCards stats={overview} isLoading={isLoading} />
 
-      <h1 className="text-2xl font-bold">{t('overview.kubernetesResources')}</h1>
+      {/* <h1 className="text-2xl font-bold">{t('overview.kubernetesResources')}</h1> */}
 
-      <div className="grid grid-cols-1 gap-4 @5xl/main:grid-cols-1">
+      <div className="grid grid-cols-2 gap-2 @5xl/main:grid-cols-2">
         <ResourceCharts
           data={overview?.resource}
           isLoading={isLoading}
           error={error}
           isError={isError}
         />
+        <div className="grid grid-cols-1 gap-4 @5xl/main:grid-cols-1">
+          <ResourceUtilizationChart
+            cpu={resourceUsage?.cpu || []}
+            memory={resourceUsage?.memory || []}
+            isLoading={isLoadingResourceUsage}
+            error={errorResourceUsage}
+          />
+          <NetworkUsageChart
+            networkIn={resourceUsage?.networkIn || []}
+            networkOut={resourceUsage?.networkOut || []}
+            isLoading={isLoadingResourceUsage}
+            error={errorResourceUsage}
+          /></div>
+        
         {/* <RecentEvents /> */}
       </div>
 
-      {overview?.prometheusEnabled && (
+      {/* {overview?.prometheusEnabled && (
         <div className="grid grid-cols-1 gap-4 @5xl/main:grid-cols-2">
           <ResourceUtilizationChart
             cpu={resourceUsage?.cpu || []}
@@ -78,13 +89,13 @@ export function TypesenseOverview() {
             error={errorResourceUsage}
           />
         </div>
-      )}
+      )} */}
 
         {!isDismissed &&
         user?.provider !== 'Anonymous' &&
         user?.roles?.some((role) => role.name === 'admin') && 
         <div>
-        <h1 className="text-2xl font-bold">{t('overview.setup')}</h1><br/>
+        {/* <h1 className="text-2xl font-bold">{t('overview.setup')}</h1><br/> */}
         <SettingsHint />
       </div>}
 
