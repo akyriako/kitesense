@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"embed"
+	"errors"
 	"flag"
 	"io/fs"
 	"log"
@@ -229,7 +230,7 @@ func main() {
 		Handler: r.Handler(),
 	}
 	go func() {
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			klog.Fatalf("Failed to start server: %v", err)
 		}
 	}()
