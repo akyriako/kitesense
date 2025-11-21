@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 
+	tykov1alpha1 "github.com/akyriako/typesense-operator/api/v1alpha1"
 	"github.com/gin-gonic/gin"
 	"github.com/zxh326/kite/pkg/cluster"
 	"github.com/zxh326/kite/pkg/common"
@@ -100,6 +101,20 @@ func GetTypesenseOverview(c *gin.Context) {
 		}
 	}
 
+	// Get Typesense Clusters
+	tscs := &tykov1alpha1.TypesenseClusterList{}
+	if err := cs.K8sClient.List(ctx, tscs, &client.ListOptions{}); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	runningClusters := 0
+	for _, tsc := range tscs.Items {
+		if tsc.Status.Phase == "QuorumReady" {
+			runningClusters++
+		}
+	}
+
 	// Get pods
 	pods := &corev1.PodList{}
 	if err := cs.K8sClient.List(ctx, pods, &client.ListOptions{}); err != nil {
@@ -132,8 +147,8 @@ func GetTypesenseOverview(c *gin.Context) {
 		ReadyNodes:       readyNodes,
 		TotalOperators:   len(deployments.Items),
 		RunningOperators: runningOperators,
-		TotalClusters:    0,
-		RunningClusters:  0,
+		TotalClusters:    len(tscs.Items),
+		RunningClusters:  runningClusters,
 		TotalScrapers:    0,
 		RunningScrapers:  0,
 		PromEnabled:      cs.PromClient != nil,
