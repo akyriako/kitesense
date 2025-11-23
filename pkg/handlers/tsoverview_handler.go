@@ -8,6 +8,7 @@ import (
 	"github.com/zxh326/kite/pkg/cluster"
 	"github.com/zxh326/kite/pkg/common"
 	"github.com/zxh326/kite/pkg/model"
+	"github.com/zxh326/kite/pkg/utils"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -74,30 +75,7 @@ func GetTypesenseOverview(c *gin.Context) {
 
 	runningOperators := 0
 	for _, d := range deployments.Items {
-		desired := int32(1)
-		if d.Spec.Replicas != nil {
-			desired = *d.Spec.Replicas
-		}
-
-		progressing := false
-		availableCond := false
-		for _, cond := range d.Status.Conditions {
-			if cond.Type == appsv1.DeploymentProgressing && cond.Status == corev1.ConditionTrue {
-				progressing = true
-			}
-			if cond.Type == appsv1.DeploymentAvailable && cond.Status == corev1.ConditionTrue {
-				availableCond = true
-			}
-		}
-
-		ok := (d.Status.ReadyReplicas == desired) &&
-			(d.Status.AvailableReplicas == desired) &&
-			(d.Status.UpdatedReplicas == desired) &&
-			progressing &&
-			availableCond &&
-			(d.Status.ObservedGeneration >= d.Generation)
-
-		if ok {
+		if utils.IsDeploymentReady(&d) {
 			runningOperators++
 		}
 	}
@@ -117,26 +95,6 @@ func GetTypesenseOverview(c *gin.Context) {
 			runningClusters++
 		}
 
-		//// Get Scrapers
-		//scrapers := &batchv1.CronJobList{}
-		//ownerRef := metav1.OwnerReference{
-		//	APIVersion: tsc.APIVersion,
-		//	Kind:       tsc.Kind,
-		//	Name:       tsc.Name,
-		//	UID:        tsc.UID,
-		//}
-		//if err := cs.K8sClient.List(ctx, scrapers, &client.ListOptions{FieldSelector: fields.OneTermEqualSelector("metadata.ownerReferences.uid", string(ownerRef.UID))}); err != nil {
-		//	c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		//	return
-		//}
-		//
-		//for _, cronjob := range scrapers.Items {
-		//	if cronjob.Spec.Suspend == nil || !*cronjob.Spec.Suspend {
-		//		runningScrapers++
-		//	}
-		//	totalScrapers++
-		//}
-		// Get all cronjobs in the same namespace
 		cronjobs := &batchv1.CronJobList{}
 		if err := cs.K8sClient.List(ctx, cronjobs, &client.ListOptions{
 			Namespace: tsc.Namespace,
