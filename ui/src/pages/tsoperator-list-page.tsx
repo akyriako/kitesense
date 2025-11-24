@@ -24,7 +24,7 @@ export function TypesenseOperatorListPage() {
         cell: ({ row }) => (
           <div className="font-medium text-blue-500 hover:underline">
             <Link
-              to={`/deployments/${row.original.metadata!.namespace}/${
+              to={`/operators/${row.original.metadata!.namespace}/${
                 row.original.metadata!.name
               }`}
             >
