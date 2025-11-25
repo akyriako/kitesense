@@ -13,6 +13,7 @@ import {
   IconCircleDashed,
   IconAlertHexagonFilled,
   IconAlertCircleFilled,
+  IconCircleDotFilled,
 } from '@tabler/icons-react'
 
 interface TypesenseClusterStatusIconProps {

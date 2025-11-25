@@ -2,6 +2,7 @@ package resources
 
 import (
 	"net/http"
+	"sort"
 
 	tykov1alpha1 "github.com/akyriako/typesense-operator/api/v1alpha1"
 	"github.com/gin-gonic/gin"
@@ -55,6 +56,13 @@ func (h *TypesenseClusterHandler) List(c *gin.Context) {
 			clusters.Items[i].ObjectMeta.ManagedFields = nil
 		}
 	}
+
+	sort.SliceStable(clusters.Items, func(i, j int) bool {
+		if clusters.Items[i].Namespace == clusters.Items[j].Namespace {
+			return clusters.Items[i].Name < clusters.Items[j].Name
+		}
+		return clusters.Items[i].Namespace < clusters.Items[j].Namespace
+	})
 
 	c.JSON(http.StatusOK, clusters)
 }
