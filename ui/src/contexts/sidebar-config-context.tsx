@@ -38,6 +38,7 @@ import {
   IconClockCog,
   IconDatabaseExport,
   IconBolt,
+  IconRobot,
 } from '@tabler/icons-react'
 
 import {
@@ -79,6 +80,7 @@ const iconMap = {
   IconClockCog,
   IconDatabaseExport,
   IconBolt,
+  IconRobot,
 }
 
 const getIconName = (iconComponent: React.ComponentType): string => {
@@ -128,7 +130,7 @@ interface SidebarConfigProviderProps {
 
 const defaultMenus: DefaultMenus = {
   'sidebar.groups.typesenseclusters': [
-    { titleKey: 'nav.tsoperators', url: '/operators', icon: IconClockCog },
+    { titleKey: 'nav.tsoperators', url: '/operators', icon: IconRobot },
     { titleKey: 'nav.tsclusters', url: '/typesense', icon: IconBolt },
   ],
   // 'sidebar.groups.typesensebackups': [
