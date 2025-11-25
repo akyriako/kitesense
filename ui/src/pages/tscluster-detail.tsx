@@ -1,19 +1,37 @@
-import { useEffect, useState } from 'react'
-import { IconLoader, IconRefresh, IconTrash } from '@tabler/icons-react'
+import { useCallback, useEffect, useState } from 'react'
+import {
+    IconLoader,
+    IconRefresh,
+    IconReload,
+    IconScale,
+    IconTrash,
+} from '@tabler/icons-react'
 import * as yaml from 'js-yaml'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
-import { toast } from 'sonner'
+import { TypesenseClusterStatusIcon, TypesenseClusterReadyIcon, TypesenseClusterReadyDisplay } from '@/components/tscluster-status-icon'
+import { TypesenseClusterStatusDisplay } from '@/components/tscluster-status-display'
 
+import { toast } from 'sonner'
+import {
+    patchResource,
+    updateResource,
+    useResource,
+    //   useResourcesWatch,
+} from '@/lib/api'
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover'
 import { ResourceType, ResourceTypeMap } from '@/types/api'
-import { updateResource, useResource } from '@/lib/api'
 import { getOwnerInfo } from '@/lib/k8s'
 import { formatDate, translateError } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ResponsiveTabs } from '@/components/ui/responsive-tabs'
-import { DescribeDialog } from '@/components/describe-dialog'
 import { ErrorMessage } from '@/components/error-message'
 import { EventTable } from '@/components/event-table'
 import { LabelsAnno } from '@/components/lables-anno'
@@ -31,26 +49,85 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
     namespace?: string
 }) {
     const { namespace, name, resourceType } = props
+    const [scaleReplicas, setScaleReplicas] = useState<number>(1)
     const [yamlContent, setYamlContent] = useState('')
     const [isSavingYaml, setIsSavingYaml] = useState(false)
-    const [refreshKey, setRefreshKey] = useState(0)
+    const [isScalePopoverOpen, setIsScalePopoverOpen] = useState(false)
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-
+    const [refreshKey, setRefreshKey] = useState(0)
+    const [refreshInterval, setRefreshInterval] = useState<number>(5000)
     const { t } = useTranslation()
 
+    // const {
+    //     data,
+    //     isLoading,
+    //     isError,
+    //     error,
+    //     refetch: handleRefresh,
+    // } = useResource(resourceType, name, namespace)
+
+    // Fetch deployment data
     const {
         data,
-        isLoading,
-        isError,
-        error,
-        refetch: handleRefresh,
-    } = useResource(resourceType, name, namespace)
+        isLoading: isLoadingTypesenseCluster,
+        isError: isTypesenseClusterError,
+        error: typesenseClusterError,
+        refetch: refetchTypesenseCluster,
+    } = useResource('typesense', name, namespace, {
+        refreshInterval,
+    })
+
 
     useEffect(() => {
         if (data) {
             setYamlContent(yaml.dump(data, { indent: 2 }))
+            // setScaleReplicas(data.spec?.replicas || 1)
         }
     }, [data])
+
+    // Auto-reset refresh interval when deployment reaches stable state
+    //   useEffect(() => {
+    //     if (deployment) {
+    //       const status = getDeploymentStatus(deployment)
+    //       const isStable =
+    //         status === 'Available' ||
+    //         status === 'Scaled Down' ||
+    //         status === 'Paused'
+
+    //       if (isStable) {
+    //         const timer = setTimeout(() => {
+    //           setRefreshInterval(0)
+    //         }, 2000)
+    //         return () => clearTimeout(timer)
+    //       } else {
+    //         setRefreshInterval(1000)
+    //       }
+    //     }
+    //   }, [deployment, refreshInterval])
+
+    const handleRefresh = () => {
+        setRefreshKey((prev) => prev + 1)
+        refetchTypesenseCluster()
+    }
+
+    const handleScale = useCallback(async () => {
+        if (!data) return
+
+        try {
+            const updatedDeployment = {
+                spec: {
+                    replicas: scaleReplicas,
+                },
+            }
+            await patchResource('typesense', name, namespace, updatedDeployment)
+            toast.success(`Typesense Cluster scaled to ${scaleReplicas} replicas`)
+            setIsScalePopoverOpen(false)
+            setRefreshInterval(1000)
+        } catch (error) {
+            console.error('Failed to restart deployment:', error)
+            toast.error(translateError(error, t))
+        }
+    }, [t, data, name, namespace, scaleReplicas])
 
     const handleSaveYaml = async (content: ResourceTypeMap[T]) => {
         setIsSavingYaml(true)
@@ -76,7 +153,7 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
         await handleRefresh()
     }
 
-    if (isLoading) {
+    if (isLoadingTypesenseCluster) {
         return (
             <div className="p-6">
                 <Card>
@@ -91,15 +168,19 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
         )
     }
 
-    if (isError || !data) {
+    if (isTypesenseClusterError || !data) {
         return (
             <ErrorMessage
                 resourceName={resourceType.slice(0, -1)}
-                error={error}
+                error={typesenseClusterError}
                 refetch={handleRefresh}
             />
         )
     }
+
+    console.log('data:', data)
+    console.log('spec:', data.spec)
+    console.log('resetPeersOnError:', data.spec?.resetPeersOnError)
 
     return (
         <div className="space-y-2">
@@ -115,19 +196,73 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
                 </div>
                 <div className="flex gap-2">
                     <Button
-                        disabled={isLoading}
+                        disabled={isLoadingTypesenseCluster}
                         variant="outline"
                         size="sm"
-                        onClick={handleManualRefresh}
+                        onClick={handleRefresh}
                     >
                         <IconRefresh className="w-4 h-4" />
                         Refresh
                     </Button>
-                    {/* <DescribeDialog
-            resourceType={resourceType}
-            namespace={namespace}
-            name={name}
-          /> */}
+                    <Popover
+                        open={isScalePopoverOpen}
+                        onOpenChange={setIsScalePopoverOpen}
+                    >
+                        <PopoverTrigger asChild>
+                            <Button variant="outline" size="sm">
+                                <IconScale className="w-4 h-4" />
+                                Scale
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-80" align="end">
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <h4 className="font-medium">Scale Typesense Cluster</h4>
+                                    <p className="text-sm text-muted-foreground">
+                                        Adjust the number of replicas for this Typesense Cluster.
+                                    </p>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="replicas">Replicas</Label>
+                                    <div className="flex items-center gap-1">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-9 w-9 p-0"
+                                            onClick={() =>
+                                                setScaleReplicas(Math.max(0, scaleReplicas - 1))
+                                            }
+                                            disabled={scaleReplicas <= 0}
+                                        >
+                                            -
+                                        </Button>
+                                        <Input
+                                            id="replicas"
+                                            type="number"
+                                            min="0"
+                                            value={scaleReplicas}
+                                            onChange={(e) =>
+                                                setScaleReplicas(parseInt(e.target.value) || 0)
+                                            }
+                                            className="text-center"
+                                        />
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-9 w-9 p-0"
+                                            onClick={() => setScaleReplicas(scaleReplicas + 1)}
+                                        >
+                                            +
+                                        </Button>
+                                    </div>
+                                </div>
+                                <Button onClick={handleScale} className="w-full">
+                                    <IconScale className="w-4 h-4 mr-2" />
+                                    Scale
+                                </Button>
+                            </div>
+                        </PopoverContent>
+                    </Popover>
                     <Button
                         variant="destructive"
                         size="sm"
@@ -148,51 +283,95 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
                             <div className="space-y-6">
                                 <Card>
                                     <CardHeader>
-                                        <CardTitle className="capitalize">
-                                            {resourceType.slice(0, 0)} Status Overview
-                                        </CardTitle>
+                                        <CardTitle>Status Overview</CardTitle>
                                     </CardHeader>
                                     <CardContent className="space-y-4">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div>
-                                                <Label className="text-xs text-muted-foreground">
-                                                    Created
-                                                </Label>
-                                                <p className="text-sm">
-                                                    {formatDate(data.metadata?.creationTimestamp || '')}
-                                                </p>
-                                            </div>
-                                            <div>
-                                                <Label className="text-xs text-muted-foreground">
-                                                    UID
-                                                </Label>
-                                                <p className="text-sm font-mono">
-                                                    {data.metadata?.uid || 'N/A'}
-                                                </p>
-                                            </div>
-                                            {getOwnerInfo(data.metadata) && (
+                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex items-center gap-2">
+                                                    <TypesenseClusterReadyIcon statusData={data?.status?.conditions}/>
+                                                </div>
                                                 <div>
-                                                    <Label className="text-xs text-muted-foreground">
-                                                        Owner
-                                                    </Label>
-                                                    <p className="text-sm">
-                                                        {(() => {
-                                                            const ownerInfo = getOwnerInfo(data.metadata)
-                                                            if (!ownerInfo) {
-                                                                return 'No owner'
-                                                            }
-                                                            return (
-                                                                <Link
-                                                                    to={ownerInfo.path}
-                                                                    className="text-blue-600 hover:text-blue-800 hover:underline"
-                                                                >
-                                                                    {ownerInfo.kind}/{ownerInfo.name}
-                                                                </Link>
-                                                            )
-                                                        })()}
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Cluster Status
+                                                    </p>
+                                                    <p className="text-sm font-medium">
+                                                        <TypesenseClusterReadyDisplay statusData={data?.status?.conditions} />
+
                                                     </p>
                                                 </div>
-                                            )}
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-muted-foreground">
+                                                    Version
+                                                </p>
+                                                <p className="text-sm font-medium">
+                                                    {data?.spec?.image}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-muted-foreground">
+                                                    Desired Replicas
+                                                </p>
+                                                <p className="text-sm font-medium">
+                                                    {data?.spec?.replicas || 0}
+                                                </p>
+                                            </div>
+
+                                        </div>
+                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex items-center gap-2">
+                                                    <TypesenseClusterStatusIcon status={data?.status?.phase} />
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Quorum Evaluation Phase
+                                                    </p>
+                                                    <p className="text-sm font-medium">
+                                                        <TypesenseClusterStatusDisplay status={data?.status?.phase} />
+                                                    </p>
+                                                </div>
+                                            </div>
+
+
+
+
+
+                                            <div>
+                                                <p className="text-xs text-muted-foreground">
+                                                    Enabled CORS
+                                                </p>
+                                                <p className="text-sm font-medium">
+                                                    {data?.spec?.enableCors === true ? 'true' : 'false'}
+                                                </p>
+                                            </div>
+
+                                            <div>
+                                                <p className="text-xs text-muted-foreground">
+                                                    Reset Peers on Error
+                                                </p>
+                                                <p className="text-sm font-medium">
+                                                    {data?.spec?.resetPeersOnError === true ? 'true' : 'false'}
+                                                </p>
+                                            </div>
+                                            <div></div>
+                                            <div>
+                                                <p className="text-xs text-muted-foreground">
+                                                    API Port
+                                                </p>
+                                                <p className="text-sm font-medium">
+                                                    {data?.spec?.apiPort || 0}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-muted-foreground">
+                                                    Peering Port
+                                                </p>
+                                                <p className="text-sm font-medium">
+                                                    {data?.spec?.peeringPort || 0}
+                                                </p>
+                                            </div>
                                         </div>
                                         <LabelsAnno
                                             labels={data.metadata?.labels || {}}
@@ -200,7 +379,40 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
                                         />
                                     </CardContent>
                                 </Card>
-                                {/* Pod Conditions */}
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Metrics Overview</CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                                            <div>
+                                                <p className="text-xs text-muted-foreground">
+                                                    Prometheus Helm Release
+                                                </p>
+                                                <p className="text-sm font-medium">
+                                                    {data?.spec?.metrics?.release || '-'}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-muted-foreground">
+                                                    Sidecar Image
+                                                </p>
+                                                <p className="text-sm font-medium">
+                                                    {data?.spec?.metrics?.image || '-'}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-muted-foreground">
+                                                    Scrape Interval(sec)
+                                                </p>
+                                                <p className="text-sm font-medium">
+                                                    {data?.spec?.metrics?.interval || '-'}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                    </CardContent>
+                                </Card>
                                 {data.status?.conditions && data.status.conditions.length > 0 && (
                                     <Card>
                                         <CardHeader>
@@ -263,19 +475,8 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
                         ),
                     },
                     {
-                        value: 'Nodes',
-                        label: 'Nodes',
-                        content: (
-                            <RelatedResourcesTable
-                                resource={resourceType}
-                                name={name}
-                                namespace={namespace}
-                            />
-                        ),
-                    },
-                    {
-                        value: 'ServerConfiguration',
-                        label: 'Server Configuration',
+                        value: 'Configuration',
+                        label: 'Configuration',
                         content: (
                             <RelatedResourcesTable
                                 resource={resourceType}
@@ -311,33 +512,33 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
                         label: 'Services',
                         content: (
                             <>
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>Service</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <ServiceDetail
-                                        name={`${name}-svc`}
-                                        namespace={namespace}
-                                        isNested={true}
-                                        isReadOnly={true}
-                                    />
-                                </CardContent>
-                            </Card>
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>Headless Service</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <SimpleResourceDetail
-                                        resourceType='services'
-                                        name={`${name}-sts-svc`}
-                                        namespace={namespace}
-                                        isNested={true}
-                                        isReadOnly={true}
-                                    />
-                                </CardContent>
-                            </Card>
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Service</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <ServiceDetail
+                                            name={`${name}-svc`}
+                                            namespace={namespace}
+                                            isNested={true}
+                                            isReadOnly={true}
+                                        />
+                                    </CardContent>
+                                </Card>
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Headless Service</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <SimpleResourceDetail
+                                            resourceType='services'
+                                            name={`${name}-sts-svc`}
+                                            namespace={namespace}
+                                            isNested={true}
+                                            isReadOnly={true}
+                                        />
+                                    </CardContent>
+                                </Card>
                             </>
                         ),
                     },

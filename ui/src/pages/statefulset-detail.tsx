@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   IconCircleCheckFilled,
   IconExclamationCircle,
+  IconAlertCircleFilled,
   IconLoader,
   IconRefresh,
   IconReload,
@@ -407,11 +408,11 @@ export function StatefulSetDetail(props: { namespace: string; name: string }) {
                       <div className="flex items-center gap-3">
                         <div className="flex items-center gap-2">
                           {isPending ? (
-                            <IconExclamationCircle className="w-4 h-4 fill-gray-500" />
+                            <IconAlertCircleFilled className="w-5 h-5 fill-orange-500" />
                           ) : isAvailable ? (
-                            <IconCircleCheckFilled className="w-4 h-4 fill-green-500" />
+                            <IconCircleCheckFilled className="w-5 h- fill-green-500" />
                           ) : (
-                            <IconLoader className="w-4 h-4 animate-spin fill-amber-500" />
+                            <IconLoader className="w-5 h-5 animate-spin fill-amber-500" />
                           )}
                         </div>
                         <div>
