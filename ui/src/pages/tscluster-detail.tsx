@@ -23,6 +23,7 @@ import { ResourceHistoryTable } from '@/components/resource-history-table'
 import { YamlEditor } from '@/components/yaml-editor'
 import { Badge } from '@/components/ui/badge'
 import { SimpleResourceDetail } from './simple-resource-detail'
+import { ServiceDetail } from './service-detail'
 
 export function TypesenseClusterDetail<T extends ResourceType>(props: {
     resourceType: T
@@ -99,9 +100,6 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
             />
         )
     }
-
-    console.log(data)
-
 
     return (
         <div className="space-y-2">
@@ -315,12 +313,11 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
                             <>
                             <Card>
                                 <CardHeader>
-                                    <CardTitle>Headless Service</CardTitle>
+                                    <CardTitle>Service</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <SimpleResourceDetail
-                                        resourceType='services'
-                                        name={`${name}-sts-svc`}
+                                    <ServiceDetail
+                                        name={`${name}-svc`}
                                         namespace={namespace}
                                         isNested={true}
                                         isReadOnly={true}
@@ -329,12 +326,12 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
                             </Card>
                             <Card>
                                 <CardHeader>
-                                    <CardTitle>Service</CardTitle>
+                                    <CardTitle>Headless Service</CardTitle>
                                 </CardHeader>
                                 <CardContent>
                                     <SimpleResourceDetail
                                         resourceType='services'
-                                        name={`${name}-svc`}
+                                        name={`${name}-sts-svc`}
                                         namespace={namespace}
                                         isNested={true}
                                         isReadOnly={true}
