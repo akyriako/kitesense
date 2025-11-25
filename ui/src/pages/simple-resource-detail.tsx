@@ -21,13 +21,92 @@ import { RelatedResourcesTable } from '@/components/related-resource-table'
 import { ResourceDeleteConfirmationDialog } from '@/components/resource-delete-confirmation-dialog'
 import { ResourceHistoryTable } from '@/components/resource-history-table'
 import { YamlEditor } from '@/components/yaml-editor'
+import { cn } from '@/lib/utils'
+import { useIsMobile } from '@/hooks/use-mobile'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+
+interface TabItem {
+  value: string
+  label: React.ReactNode
+  content: React.ReactNode
+}
+
+interface LocalResponsiveTabsProps {
+  tabs: TabItem[]
+  className?: string
+  tabsListClassName?: string
+}
+
+function LocalResponsiveTabs({
+  tabs,
+  className,
+  tabsListClassName,
+}: LocalResponsiveTabsProps) {
+  const isMobile = useIsMobile()
+  const [value, onValueChange] = useState(tabs[0]?.value || '')
+
+  const currentTab = tabs.find((tab) => tab.value === value)
+
+  if (isMobile) {
+    return (
+      <div className={cn('space-y-4', className)}>
+        <Select value={value} onValueChange={onValueChange}>
+          <SelectTrigger className="w-full">
+            <SelectValue>{currentTab?.label || 'Select tab'}</SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {tabs.map((tab) => (
+              <SelectItem key={tab.value} value={tab.value}>
+                {tab.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {currentTab && <div className="space-y-4">{currentTab.content}</div>}
+      </div>
+    )
+  }
+
+  return (
+    <Tabs value={value} onValueChange={onValueChange} className={className}>
+      <TabsList
+        className={cn(
+          '**:data-[slot=badge]:bg-muted-foreground/30 **:data-[slot=badge]:size-5 **:data-[slot=badge]:rounded-full **:data-[slot=badge]:px-1',
+          tabsListClassName
+        )}
+      >
+        {tabs.map((tab) => (
+          <TabsTrigger key={tab.value} value={tab.value}>
+            {tab.label}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+
+      {tabs.map((tab) => (
+        <TabsContent key={tab.value} value={tab.value} className="space-y-4">
+          {tab.content}
+        </TabsContent>
+      ))}
+    </Tabs>
+  )
+}
 
 export function SimpleResourceDetail<T extends ResourceType>(props: {
   resourceType: T
   name: string
   namespace?: string
+  isNested?: boolean
+  isReadOnly?: boolean
 }) {
-  const { namespace, name, resourceType } = props
+  const { namespace, name, resourceType, isNested = false, isReadOnly = false } = props
   const [yamlContent, setYamlContent] = useState('')
   const [isSavingYaml, setIsSavingYaml] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
@@ -54,7 +133,6 @@ export function SimpleResourceDetail<T extends ResourceType>(props: {
     try {
       await updateResource(resourceType, name, namespace, content)
       toast.success('YAML saved successfully')
-      // Refresh data after successful save
       await handleRefresh()
     } catch (error) {
       toast.error(translateError(error, t))
@@ -68,7 +146,6 @@ export function SimpleResourceDetail<T extends ResourceType>(props: {
   }
 
   const handleManualRefresh = async () => {
-    // Increment refresh key to force YamlEditor re-render
     setRefreshKey((prev) => prev + 1)
     await handleRefresh()
   }
@@ -98,9 +175,135 @@ export function SimpleResourceDetail<T extends ResourceType>(props: {
     )
   }
 
+  const tabsList = [
+    {
+      value: 'simple-overview',
+      label: 'Overview',
+      content: (
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="capitalize">
+                {/* {resourceType.slice(0, )} Information */}
+                Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs text-muted-foreground">
+                    Created
+                  </Label>
+                  <p className="text-sm">
+                    {formatDate(data.metadata?.creationTimestamp || '')}
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">
+                    UID
+                  </Label>
+                  <p className="text-sm font-mono">
+                    {data.metadata?.uid || 'N/A'}
+                  </p>
+                </div>
+                {getOwnerInfo(data.metadata) && (
+                  <div>
+                    <Label className="text-xs text-muted-foreground">
+                      Owner
+                    </Label>
+                    <p className="text-sm">
+                      {(() => {
+                        const ownerInfo = getOwnerInfo(data.metadata)
+                        if (!ownerInfo) {
+                          return 'No owner'
+                        }
+                        const ownerText = `${ownerInfo.kind}/${ownerInfo.name}`
+                        return isNested ? (
+                          ownerText
+                        ) : (
+                          <Link
+                            to={ownerInfo.path}
+                            className="text-blue-600 hover:text-blue-800 hover:underline"
+                          >
+                            {ownerText}
+                          </Link>
+                        )
+                      })()}
+                    </p>
+                  </div>
+                )}
+              </div>
+              <LabelsAnno
+                labels={data.metadata?.labels || {}}
+                annotations={data.metadata?.annotations || {}}
+              />
+            </CardContent>
+          </Card>
+        </div>
+      ),
+    },
+    {
+      value: 'simple-yaml',
+      label: 'YAML',
+      content: (
+        <div className="space-y-4">
+          <YamlEditor
+            key={refreshKey}
+            value={yamlContent}
+            title="YAML Configuration"
+            readOnly={isReadOnly}
+            onSave={handleSaveYaml}
+            onChange={handleYamlChange}
+            isSaving={isSavingYaml}
+            showControls={!isReadOnly}
+          />
+        </div>
+      ),
+    },
+    {
+      value: 'simple-Related',
+      label: 'Related',
+      content: (
+        <RelatedResourcesTable
+          resource={resourceType}
+          name={name}
+          namespace={namespace}
+        />
+      ),
+    },
+    {
+      value: 'simple-events',
+      label: 'Events',
+      content: (
+        <EventTable
+          resource={resourceType}
+          namespace={namespace}
+          name={name}
+        />
+      ),
+    },
+    {
+      value: 'simple-history',
+      label: 'History',
+      content: (
+        <ResourceHistoryTable
+          resourceType={resourceType}
+          name={name}
+          namespace={namespace}
+          currentResource={data}
+        />
+      ),
+    },
+  ]
+
+  const filteredTabsList = isNested 
+  ? tabsList.filter(tab => tab.value !== 'simple-Related')
+  : tabsList
+
+  const TabsComponent = isNested ? LocalResponsiveTabs : ResponsiveTabs
+
   return (
     <div className="space-y-2">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-bold">{name}</h1>
@@ -120,138 +323,28 @@ export function SimpleResourceDetail<T extends ResourceType>(props: {
             <IconRefresh className="w-4 h-4" />
             Refresh
           </Button>
-          <DescribeDialog
-            resourceType={resourceType}
-            namespace={namespace}
-            name={name}
-          />
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={() => setIsDeleteDialogOpen(true)}
-          >
-            <IconTrash className="w-4 h-4" />
-            Delete
-          </Button>
+          {!isNested && (
+            <DescribeDialog
+              resourceType={resourceType}
+              namespace={namespace}
+              name={name}
+            />
+          )}
+          {!isNested && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setIsDeleteDialogOpen(true)}
+            >
+              <IconTrash className="w-4 h-4" />
+              Delete
+            </Button>
+          )}
+
         </div>
       </div>
 
-      <ResponsiveTabs
-        tabs={[
-          {
-            value: 'overview',
-            label: 'Overview',
-            content: (
-              <div className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="capitalize">
-                      {resourceType.slice(0, -1)} Information
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label className="text-xs text-muted-foreground">
-                          Created
-                        </Label>
-                        <p className="text-sm">
-                          {formatDate(data.metadata?.creationTimestamp || '')}
-                        </p>
-                      </div>
-                      <div>
-                        <Label className="text-xs text-muted-foreground">
-                          UID
-                        </Label>
-                        <p className="text-sm font-mono">
-                          {data.metadata?.uid || 'N/A'}
-                        </p>
-                      </div>
-                      {getOwnerInfo(data.metadata) && (
-                        <div>
-                          <Label className="text-xs text-muted-foreground">
-                            Owner
-                          </Label>
-                          <p className="text-sm">
-                            {(() => {
-                              const ownerInfo = getOwnerInfo(data.metadata)
-                              if (!ownerInfo) {
-                                return 'No owner'
-                              }
-                              return (
-                                <Link
-                                  to={ownerInfo.path}
-                                  className="text-blue-600 hover:text-blue-800 hover:underline"
-                                >
-                                  {ownerInfo.kind}/{ownerInfo.name}
-                                </Link>
-                              )
-                            })()}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                    <LabelsAnno
-                      labels={data.metadata?.labels || {}}
-                      annotations={data.metadata?.annotations || {}}
-                    />
-                  </CardContent>
-                </Card>
-              </div>
-            ),
-          },
-          {
-            value: 'yaml',
-            label: 'YAML',
-            content: (
-              <div className="space-y-4">
-                <YamlEditor
-                  key={refreshKey}
-                  value={yamlContent}
-                  title="YAML Configuration"
-                  onSave={handleSaveYaml}
-                  onChange={handleYamlChange}
-                  isSaving={isSavingYaml}
-                />
-              </div>
-            ),
-          },
-          {
-            value: 'Related',
-            label: 'Related',
-            content: (
-              <RelatedResourcesTable
-                resource={resourceType}
-                name={name}
-                namespace={namespace}
-              />
-            ),
-          },
-          {
-            value: 'events',
-            label: 'Events',
-            content: (
-              <EventTable
-                resource={resourceType}
-                namespace={namespace}
-                name={name}
-              />
-            ),
-          },
-          {
-            value: 'history',
-            label: 'History',
-            content: (
-              <ResourceHistoryTable
-                resourceType={resourceType}
-                name={name}
-                namespace={namespace}
-                currentResource={data}
-              />
-            ),
-          },
-        ]}
-      />
+      <TabsComponent tabs={filteredTabsList} />
 
       <ResourceDeleteConfirmationDialog
         open={isDeleteDialogOpen}

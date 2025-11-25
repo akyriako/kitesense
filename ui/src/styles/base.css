@@ -10,7 +10,14 @@
   .font-inconsolata {
     font-size: calc(1.1em * 1.1); /* 10% bigger */
   }
+
+    /* Match only elements that actually resolve to Inconsolata */
+  [style*="JetBrains Mono"],
+  .font-jetbrains {
+    font-size: calc(1.1em * 1.1); /* 10% bigger */
+  }
 }
+
 
 /* maple-mono-latin-400-normal */
 @font-face {

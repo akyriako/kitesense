@@ -125,10 +125,10 @@ export function NodeListPage() {
         header: t('common.name'),
         cell: ({ row }) => (
           <div className="font-medium text-blue-500">
-            {/* <Link to={`/nodes/${row.original.metadata!.name}`}>
+            <Link to={`/nodes/${row.original.metadata!.name}`}>
               {row.original.metadata!.name}
-            </Link> */}
-             {row.original.metadata!.name}
+            </Link>
+             {/* {row.original.metadata!.name} */}
           </div>
         ),
       }),
