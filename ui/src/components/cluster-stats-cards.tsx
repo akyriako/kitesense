@@ -70,7 +70,7 @@ export function ClusterStatsCards({
       icon: IconServerBolt,
       color: 'text-orange-600 dark:text-orange-400',
       bgColor: 'bg-orange-50 dark:bg-orange-950/50',
-      routePath: '/clusters',
+      routePath: '/typesense',
     },
     {
       label: t('overview.docsearchscrapers'),
