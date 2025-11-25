@@ -164,7 +164,7 @@ export function UserMenu() {
           </DropdownMenuSubContent>
         </DropdownMenuSub>
 
-        <SidebarCustomizer onOpenChange={(d) => setOpen(d)} />
+        {/* <SidebarCustomizer onOpenChange={(d) => setOpen(d)} /> */}
 
         {user.provider !== 'Anonymous' && (
           <>
