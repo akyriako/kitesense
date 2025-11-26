@@ -44,6 +44,7 @@ import { Badge } from '@/components/ui/badge'
 import { SimpleResourceDetail } from './simple-resource-detail'
 import { ServiceDetail } from './service-detail'
 import { SecretDetail } from './secret-detail'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 export function TypesenseClusterDetail<T extends ResourceType>(props: {
     resourceType: T
@@ -361,8 +362,10 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
                                                 </p>
                                             </div>
                                             <div>
-                                                <Label className="text-sm font-medium">Created</Label>
-                                                <p className="text-sm text-muted-foreground">
+                                                <p className="text-xs text-muted-foreground">
+                                                    Created
+                                                </p>
+                                                <p className="text-sm font-medium">
                                                     {formatDate(data?.metadata?.creationTimestamp || '')}
                                                 </p>
                                             </div>
@@ -566,9 +569,25 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
                                     <CardHeader>
                                         <CardTitle>
                                             Server Environment Variables
-                                            <span>
-                                                <IconInfoCircleFilled className="inline-block ml-2 w-4 h-4" />
-                                            </span>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <span>
+                                                        <IconInfoCircleFilled className="inline-block ml-2 w-4 h-4" />
+                                                    </span>
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                    <p>
+                                                        Insert or update Typesense server environment variables<br />
+                                                        directly inside the ConfigMap YAML.
+                                                    </p><br />
+                                                    <p>
+                                                        More info under <Link to='https://typesense.org/docs/latest/api/server-configuration.html' className='hover:underline'>"Server Configuration"</Link> in official documentation.
+                                                    </p>
+
+                                                </TooltipContent>
+                                            </Tooltip>
+
+
                                         </CardTitle>
                                     </CardHeader>
                                     <CardContent>
