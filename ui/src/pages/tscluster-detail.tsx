@@ -299,7 +299,6 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
                                                     </p>
                                                     <p className="text-sm font-medium">
                                                         <TypesenseClusterReadyDisplay statusData={data?.status?.conditions} />
-
                                                     </p>
                                                 </div>
                                             </div>
@@ -605,7 +604,7 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
                                         <CardTitle>Quorum Overview</CardTitle>
                                     </CardHeader>
                                     <CardContent className="space-y-4">
-                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                                             <div className="flex items-center gap-3">
                                                 <div className="flex items-center gap-2">
                                                     <TypesenseClusterReadyIcon statusData={data?.status?.conditions} />
@@ -624,7 +623,6 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
                                                 <div className="flex items-center gap-2">
                                                     <TypesenseClusterStatusIcon status={data?.status?.phase} />
                                                 </div>
-
                                                 <div>
                                                     <p className="text-xs text-muted-foreground">
                                                         Phase

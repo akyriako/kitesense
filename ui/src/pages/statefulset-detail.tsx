@@ -398,6 +398,7 @@ export function StatefulSetDetail(props: { namespace: string; name: string; isNe
                           handleContainerUpdate(updatedContainer, true)
                         }
                         init
+                        allowEdit={!isReadOnly}
                       />
                     )
                   )}
@@ -420,6 +421,7 @@ export function StatefulSetDetail(props: { namespace: string; name: string; isNe
                         key={container.name}
                         container={container}
                         onContainerUpdate={handleContainerUpdate}
+                        allowEdit={!isReadOnly}
                       />
                     )
                   )}
