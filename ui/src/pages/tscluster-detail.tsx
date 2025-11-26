@@ -554,7 +554,7 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
                             <>
                                 <Card>
                                     <CardHeader>
-                                        <CardTitle>API Key Secret</CardTitle>
+                                        <CardTitle>Typesense Admin API Key</CardTitle>
                                     </CardHeader>
                                     <CardContent>
                                         <SecretDetail
@@ -568,7 +568,7 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
                                 <Card>
                                     <CardHeader>
                                         <CardTitle>
-                                            Server Environment Variables
+                                            Typesense Environment Variables
                                             <Tooltip>
                                                 <TooltipTrigger asChild>
                                                     <span>
