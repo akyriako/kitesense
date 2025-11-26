@@ -179,7 +179,7 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
         )
     }
 
-    console.log('adminApiKey:', data?.spec?.adminApiKey?.name)
+    console.log('spec:', data?.spec)
 
     return (
         <div className="space-y-2">
@@ -318,6 +318,14 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
                                             </div>
 
                                         </div>
+
+                                    </CardContent>
+                                </Card>
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Cluster Information</CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
                                         <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
                                             <div className="flex items-center gap-3">
                                                 <div className="flex items-center gap-2">
@@ -331,30 +339,10 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
                                                         <TypesenseClusterStatusDisplay status={data?.status?.phase} />
                                                     </p>
                                                 </div>
+
                                             </div>
 
 
-
-
-
-                                            <div>
-                                                <p className="text-xs text-muted-foreground">
-                                                    Enabled CORS
-                                                </p>
-                                                <p className="text-sm font-medium">
-                                                    {data?.spec?.enableCors === true ? 'true' : 'false'}
-                                                </p>
-                                            </div>
-
-                                            <div>
-                                                <p className="text-xs text-muted-foreground">
-                                                    Reset Peers on Error
-                                                </p>
-                                                <p className="text-sm font-medium">
-                                                    {data?.spec?.resetPeersOnError === true ? 'true' : 'false'}
-                                                </p>
-                                            </div>
-                                            <div></div>
                                             <div>
                                                 <p className="text-xs text-muted-foreground">
                                                     API Port
@@ -371,6 +359,59 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
                                                     {data?.spec?.peeringPort || 0}
                                                 </p>
                                             </div>
+                                            <div>
+                                                <Label className="text-sm font-medium">Created</Label>
+                                                <p className="text-sm text-muted-foreground">
+                                                    {formatDate(data?.metadata?.creationTimestamp || '')}
+                                                </p>
+                                            </div>
+                                            <div>
+
+                                                <p className="text-xs text-muted-foreground">
+                                                    Enable CORS
+                                                </p>
+                                                <p className="text-sm font-medium">
+                                                    {data?.spec?.enableCors === true ? 'true' : 'false'}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-muted-foreground">
+                                                    Reset Peers on Error
+                                                </p>
+                                                <p className="text-sm font-medium">
+                                                    {data?.spec?.resetPeersOnError === true ? 'true' : 'false'}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-muted-foreground">
+                                                    Incremental Quorum Recovery
+                                                </p>
+                                                <p className="text-sm font-medium">
+                                                    {data?.spec?.incrementalQuorumRecovery === true ? 'true' : 'false'}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-muted-foreground">
+                                                    Allowed CORS Domains
+                                                </p>
+                                                <p className="text-sm font-medium">
+                                                    {data?.spec?.corsDomains || '-'}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-muted-foreground">
+                                                    Health Probe Timeout(msec)
+                                                </p>
+                                                <p className="text-sm font-medium">
+                                                    {data?.spec?.healthProbeTimeoutInMilliseconds || '500'}
+                                                </p>
+                                            </div>
+                                            <div></div>
+
+
+
+
+
                                         </div>
                                         <LabelsAnno
                                             labels={data.metadata?.labels || {}}
@@ -380,7 +421,46 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
                                 </Card>
                                 <Card>
                                     <CardHeader>
-                                        <CardTitle>Metrics Overview</CardTitle>
+                                        <CardTitle>Storage Information</CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                                            <div>
+                                                <p className="text-xs text-muted-foreground mb-2">
+                                                    Storage Class
+                                                </p>
+                                                {/* <p className="text-sm font-medium">
+                                                    {data?.spec?.storage?.storageClassName || '-'}
+                                                </p> */}
+                                                <p className="text-sm">
+                                                    <Badge variant="outline">
+                                                        {data?.spec?.storage?.storageClassName || 'standard'}
+                                                    </Badge>
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-muted-foreground">
+                                                    Size
+                                                </p>
+                                                <p className="text-sm font-medium">
+                                                    {data?.spec?.storage?.size || '100Mi'}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-muted-foreground">
+                                                    Resources
+                                                </p>
+                                                <p className="text-sm font-medium">
+                                                    {data?.spec?.storage?.size || '100Mi'}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                    </CardContent>
+                                </Card>
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Metrics Information</CardTitle>
                                     </CardHeader>
                                     <CardContent className="space-y-4">
                                         <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
@@ -412,6 +492,7 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
 
                                     </CardContent>
                                 </Card>
+
                                 {data.status?.conditions && data.status.conditions.length > 0 && (
                                     <Card>
                                         <CardHeader>
@@ -463,8 +544,8 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
                         ),
                     },
                     {
-                        value: 'Secret',
-                        label: 'Secret',
+                        value: 'Configuration',
+                        label: 'Configuration',
                         content: (
                             <Card>
                                 <CardHeader>
@@ -482,30 +563,8 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
                         ),
                     },
                     {
-                        value: 'Configuration',
-                        label: 'Configuration',
-                        content: (
-                            <RelatedResourcesTable
-                                resource={resourceType}
-                                name={name}
-                                namespace={namespace}
-                            />
-                        ),
-                    },
-                    {
-                        value: 'StatefulSet',
-                        label: 'StatefulSet',
-                        content: (
-                            <RelatedResourcesTable
-                                resource={resourceType}
-                                name={name}
-                                namespace={namespace}
-                            />
-                        ),
-                    },
-                    {
-                        value: 'Pods',
-                        label: 'Pods',
+                        value: 'Quorum',
+                        label: 'Quorum',
                         content: (
                             <RelatedResourcesTable
                                 resource={resourceType}
@@ -568,17 +627,6 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
                                 </CardContent>
                             </Card>
 
-                        ),
-                    },
-                    {
-                        value: 'PodMonitor',
-                        label: 'PodMonitor',
-                        content: (
-                            <RelatedResourcesTable
-                                resource={resourceType}
-                                name={name}
-                                namespace={namespace}
-                            />
                         ),
                     },
                     {
