@@ -182,8 +182,6 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
         )
     }
 
-    console.log('spec:', data?.spec)
-
     return (
         <div className="space-y-2">
             {/* Header */}

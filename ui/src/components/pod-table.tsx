@@ -60,7 +60,6 @@ export function PodTable(props: {
         accessor: (pod: Pod) => pod.spec,
         cell: (value: unknown) => {
           const spec = value as Pod['spec']
-          console.log(spec)
           return (
             <Badge variant="outline" className="text-muted-foreground px-1.5">
               {spec!.containers[0]!.image}

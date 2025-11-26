@@ -172,7 +172,6 @@ export const TypesenseClusterReadyDisplay = ({ statusData }: { statusData: Condi
   const conds = statusData ?? []
   // find Ready conditions only
   const readyConds = conds.filter((c) => c?.type === 'Ready')
-  console.log(statusData)
   if (readyConds.length === 0) {
     return "Unknown"
   }
