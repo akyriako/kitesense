@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { IconLoader, IconRefresh, IconTrash } from '@tabler/icons-react'
+import { IconLoader, IconRefresh, IconTrash, IconColumns, IconColumnsOff } from '@tabler/icons-react'
 import * as yaml from 'js-yaml'
 import { Secret } from 'kubernetes-types/core/v1'
 import { useTranslation } from 'react-i18next'
@@ -222,7 +222,7 @@ export function SecretDetail(props: { name: string; namespace?: string, isNested
       label: 'YAML',
       content: (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          {/* <div className="flex items-center justify-between">
             {secret.data && Object.keys(secret.data).length > 0 && (
               <Button
                 variant="outline"
@@ -232,7 +232,7 @@ export function SecretDetail(props: { name: string; namespace?: string, isNested
                 {showDecodedYaml ? 'Show Base64' : 'Decode Values'}
               </Button>
             )}
-          </div>
+          </div> */}
           <YamlEditor<'secrets'>
             key={`${refreshKey}-${showDecodedYaml}`}
             value={getDecodedYamlContent()}
@@ -302,6 +302,28 @@ export function SecretDetail(props: { name: string; namespace?: string, isNested
             <IconRefresh className="w-4 h-4" />
             Refresh
           </Button>
+          {/* <Button variant="outline" size="sm" onClick={handleManualRefresh}>
+            <IconRefresh className="w-4 h-4" />
+            Decode Values
+          </Button> */}
+          {secret.data && Object.keys(secret.data).length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowDecodedYaml(!showDecodedYaml)}
+            >
+              {showDecodedYaml ? (
+                <>
+                  <IconColumnsOff className="w-4 h-4" /> Show Base64
+                </>
+              ) : (
+                <>
+                  <IconColumns className="w-4 h-4" /> Decode Values
+                </>
+              )}
+            </Button>
+          )}
+
           {!isNested && (
             <Button
               variant="destructive"

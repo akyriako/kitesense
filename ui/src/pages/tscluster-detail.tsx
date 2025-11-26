@@ -5,6 +5,7 @@ import {
     IconReload,
     IconScale,
     IconTrash,
+    IconInfoCircleFilled,
 } from '@tabler/icons-react'
 import * as yaml from 'js-yaml'
 import { useTranslation } from 'react-i18next'
@@ -547,19 +548,39 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
                         value: 'Configuration',
                         label: 'Configuration',
                         content: (
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>API Key Secret</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <SecretDetail
-                                        name={data?.spec?.adminApiKey?.name}
-                                        namespace={namespace}
-                                        isNested={true}
-                                        isReadOnly={true}
-                                    />
-                                </CardContent>
-                            </Card>
+                            <>
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>API Key Secret</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <SecretDetail
+                                            name={data?.spec?.adminApiKey?.name}
+                                            namespace={namespace}
+                                            isNested={true}
+                                            isReadOnly={true}
+                                        />
+                                    </CardContent>
+                                </Card>
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>
+                                            Server Environment Variables
+                                            <span>
+                                                <IconInfoCircleFilled className="inline-block ml-2 w-4 h-4" />
+                                            </span>
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <SimpleResourceDetail
+                                            resourceType='configmaps'
+                                            name={data?.spec?.additionalServerConfiguration?.name}
+                                            namespace={namespace}
+                                            isNested={true}
+                                        />
+                                    </CardContent>
+                                </Card>
+                            </>
                         ),
                     },
                     {
