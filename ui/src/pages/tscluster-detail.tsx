@@ -611,7 +611,7 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
                                                 </div>
                                                 <div>
                                                     <p className="text-xs text-muted-foreground">
-                                                        Status
+                                                        Cluster Status
                                                     </p>
                                                     <p className="text-sm font-medium">
                                                         <TypesenseClusterReadyDisplay statusData={data?.status?.conditions} />
@@ -625,7 +625,7 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
                                                 </div>
                                                 <div>
                                                     <p className="text-xs text-muted-foreground">
-                                                        Phase
+                                                        Evalutation Phase
                                                     </p>
                                                     <p className="text-sm font-medium">
                                                         <TypesenseClusterStatusDisplay status={data?.status?.phase} />
@@ -656,7 +656,7 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
                                 </Card>
                                 <Card>
                                     <CardHeader>
-                                        <CardTitle>StatefulSet</CardTitle>
+                                        <CardTitle>Quorum Information</CardTitle>
                                     </CardHeader>
                                     <CardContent>
                                         <StatefulSetDetail
