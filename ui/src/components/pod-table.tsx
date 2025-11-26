@@ -118,8 +118,8 @@ export function PodTable(props: {
         ),
       },
       ...(props.hiddenNode
-     ? []
-     : [
+        ? []
+        : [
           {
             header: 'Node',
             accessor: (pod: Pod) => pod.spec?.nodeName || '-',
@@ -132,7 +132,7 @@ export function PodTable(props: {
                   {value as string}
                 </Link>
               ) : (
-                <span className="text-muted-foreground">
+                <span className="text-sm text-muted-foreground font-mono">
                   {value as string}
                 </span>
               )

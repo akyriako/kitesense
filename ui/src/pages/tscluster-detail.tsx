@@ -44,6 +44,7 @@ import { Badge } from '@/components/ui/badge'
 import { SimpleResourceDetail } from './simple-resource-detail'
 import { ServiceDetail } from './service-detail'
 import { SecretDetail } from './secret-detail'
+import { StatefulSetDetail } from './statefulset-detail'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 export function TypesenseClusterDetail<T extends ResourceType>(props: {
@@ -411,11 +412,6 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
                                                 </p>
                                             </div>
                                             <div></div>
-
-
-
-
-
                                         </div>
                                         <LabelsAnno
                                             labels={data.metadata?.labels || {}}
@@ -433,9 +429,6 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
                                                 <p className="text-xs text-muted-foreground mb-2">
                                                     Storage Class
                                                 </p>
-                                                {/* <p className="text-sm font-medium">
-                                                    {data?.spec?.storage?.storageClassName || '-'}
-                                                </p> */}
                                                 <p className="text-sm">
                                                     <Badge variant="outline">
                                                         {data?.spec?.storage?.storageClassName || 'standard'}
@@ -606,11 +599,70 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
                         value: 'Quorum',
                         label: 'Quorum',
                         content: (
-                            <RelatedResourcesTable
-                                resource={resourceType}
-                                name={name}
-                                namespace={namespace}
-                            />
+                            <>
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Quorum Overview</CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex items-center gap-2">
+                                                    <TypesenseClusterReadyIcon statusData={data?.status?.conditions} />
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Status
+                                                    </p>
+                                                    <p className="text-sm font-medium">
+                                                        <TypesenseClusterReadyDisplay statusData={data?.status?.conditions} />
+
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex items-center gap-2">
+                                                    <TypesenseClusterStatusIcon status={data?.status?.phase} />
+                                                </div>
+
+                                                <div>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Phase
+                                                    </p>
+                                                    <p className="text-sm font-medium">
+                                                        <TypesenseClusterStatusDisplay status={data?.status?.phase} />
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <p className="text-xs text-muted-foreground">
+                                                    Desired Replicas
+                                                </p>
+                                                <p className="text-sm font-medium">
+                                                    {data?.spec?.replicas || 0}
+                                                </p>
+                                            </div>
+
+                                        </div>
+
+                                    </CardContent>
+                                </Card>
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>StatefulSet</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <StatefulSetDetail
+                                            name={`${name}-sts`}
+                                            namespace={namespace}
+                                            isNested={true}
+                                            isReadOnly={true}
+                                        />
+                                    </CardContent>
+                                </Card>
+                            </>
+
                         ),
                     },
                     {
