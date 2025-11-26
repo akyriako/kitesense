@@ -641,6 +641,14 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
                                                     {data?.spec?.replicas || 0}
                                                 </p>
                                             </div>
+                                            <div>
+                                                <p className="text-xs text-muted-foreground">
+                                                    Required Healthy Replicas
+                                                </p>
+                                                <p className="text-sm font-medium">
+                                                    {Math.ceil((data?.spec?.replicas ?? 1) - ((data?.spec?.replicas ?? 1) - 1) / 2) || 0}
+                                                </p>
+                                            </div>
 
                                         </div>
 
