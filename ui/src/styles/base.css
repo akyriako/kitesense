@@ -8,13 +8,13 @@
   /* Match only elements that actually resolve to Inconsolata */
   [style*="Inconsolata"],
   .font-inconsolata {
-    font-size: calc(1.1em * 1.1); /* 10% bigger */
+    font-size: calc(1em * 1.1); /* 10% bigger */
   }
 
     /* Match only elements that actually resolve to Inconsolata */
   [style*="JetBrains Mono"],
   .font-jetbrains {
-    font-size: calc(1.1em * 1.1); /* 10% bigger */
+    font-size: calc(0.9em * 1.1); /* 10% bigger */
   }
 }
 

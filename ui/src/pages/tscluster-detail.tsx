@@ -42,6 +42,7 @@ import { YamlEditor } from '@/components/yaml-editor'
 import { Badge } from '@/components/ui/badge'
 import { SimpleResourceDetail } from './simple-resource-detail'
 import { ServiceDetail } from './service-detail'
+import { SecretDetail } from './secret-detail'
 
 export function TypesenseClusterDetail<T extends ResourceType>(props: {
     resourceType: T
@@ -178,9 +179,7 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
         )
     }
 
-    console.log('data:', data)
-    console.log('spec:', data.spec)
-    console.log('resetPeersOnError:', data.spec?.resetPeersOnError)
+    console.log('adminApiKey:', data?.spec?.adminApiKey?.name)
 
     return (
         <div className="space-y-2">
@@ -289,11 +288,11 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
                                         <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
                                             <div className="flex items-center gap-3">
                                                 <div className="flex items-center gap-2">
-                                                    <TypesenseClusterReadyIcon statusData={data?.status?.conditions}/>
+                                                    <TypesenseClusterReadyIcon statusData={data?.status?.conditions} />
                                                 </div>
                                                 <div>
                                                     <p className="text-xs text-muted-foreground">
-                                                        Cluster Status
+                                                        Status
                                                     </p>
                                                     <p className="text-sm font-medium">
                                                         <TypesenseClusterReadyDisplay statusData={data?.status?.conditions} />
@@ -326,7 +325,7 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
                                                 </div>
                                                 <div>
                                                     <p className="text-xs text-muted-foreground">
-                                                        Quorum Evaluation Phase
+                                                        Phase
                                                     </p>
                                                     <p className="text-sm font-medium">
                                                         <TypesenseClusterStatusDisplay status={data?.status?.phase} />
@@ -467,11 +466,19 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
                         value: 'Secret',
                         label: 'Secret',
                         content: (
-                            <RelatedResourcesTable
-                                resource={resourceType}
-                                name={name}
-                                namespace={namespace}
-                            />
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>API Key Secret</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <SecretDetail
+                                        name={data?.spec?.adminApiKey?.name}
+                                        namespace={namespace}
+                                        isNested={true}
+                                        isReadOnly={true}
+                                    />
+                                </CardContent>
+                            </Card>
                         ),
                     },
                     {

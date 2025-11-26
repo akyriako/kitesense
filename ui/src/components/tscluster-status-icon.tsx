@@ -194,11 +194,11 @@ export const TypesenseClusterReadyDisplay = ({ statusData }: { statusData: Condi
 
   const status = (newest.status ?? 'Unknown').toString()
   if (status === 'True') {
-    return "Available"
+    return "Ready"
   }
 
   if (status === 'False') {
-    return "Not Available"
+    return "Not Ready"
   }
 
   return "Unknown"
