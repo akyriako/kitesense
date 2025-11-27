@@ -3,7 +3,7 @@ import { IconLoader, IconCircleDottedLetterL, IconCircleDottedLetterC, IconCircl
 import { Pod } from 'kubernetes-types/core/v1'
 import { Link } from 'react-router-dom'
 
-import { MetricsData, PodWithMetrics } from '@/types/api'
+import { MetricsData, PodHealthData, PodWithMetrics } from '@/types/api'
 import { getPodStatus } from '@/lib/k8s'
 import { formatDate } from '@/lib/utils'
 
@@ -15,12 +15,13 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 
 export function PodTable(props: {
   pods?: PodWithMetrics[]
+  health?: PodHealthData
   labelSelector?: string
   isLoading?: boolean
   hiddenNode?: boolean
   allowLink?: boolean
 }) {
-  const { pods, isLoading, allowLink = true } = props
+  const { pods, health, isLoading, allowLink = true } = props
 
   // Pod table columns
   const podColumns = useMemo(
@@ -56,28 +57,78 @@ export function PodTable(props: {
         align: 'left' as const,
       },
       {
-        header: 'Image',
-        accessor: (pod: Pod) => pod.spec,
+        header: 'Raft Role',
+        accessor: (pod: Pod) => pod.metadata,
         cell: (value: unknown) => {
-          const spec = value as Pod['spec']
+          const meta = value as Pod['metadata']
+          const podName = meta?.name
+          const key = (meta?.namespace || '') + '/' + (podName as string)
+          const healthData = props.health?.[key]
+
+          const stateColors = {
+            'LEADER': 'bg-blue-200',
+            'FOLLOWER': 'bg-green-200',
+            'CANDIDATE': 'bg-pink-200',
+            'UNKNOWN': 'bg-gray-200',
+          }
+
+          if (!healthData) return <Badge variant="outline" className="text-muted-foreground px-1.5">{'Unknown'}</Badge>
+
           return (
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className={`${stateColors[healthData.state] || stateColors.UNKNOWN}`}>{healthData.state}</Badge>
+            </div>
+          )
+        },
+      },
+      {
+        header: 'Healthy',
+        accessor: (pod: Pod) => pod.metadata,
+        cell: (value: unknown) => {
+          const meta = value as Pod['metadata']
+          const podName = meta?.name
+          const key = (meta?.namespace || '') + '/' + (podName as string)
+          const healthData = props.health?.[key]
+
+          if (!healthData) return (
             <Badge variant="outline" className="text-muted-foreground px-1.5">
-              {spec!.containers[0]!.image}
+              {'Unknown'}
+            </Badge>
+          )
+
+          if (healthData.error) {
+            return (
+              <Badge variant="destructive" className="text-xs">
+                Error: {healthData.error}
+              </Badge>
+            )
+          }
+
+          return (
+            <Badge
+              variant={healthData.healthy ? 'default' : 'destructive'}
+              className={healthData.healthy ? 'bg-green-500' : 'bg-red-500'}
+            >
+              {healthData.healthy ? 'Healthy' : 'Unhealthy'}
             </Badge>
           )
         },
       },
-      // {
-      //   header: 'Role',
-      //   accessor: (pod: Pod) => {
-      //     const role = "C"
-      //     return (
-      //       <IconCircleDottedLetterL className="w-5 h-5 ml-1 text-amber-600" />
-      //     )
-      //   },
-      //   cell: (value: unknown) => value as string,
-      //   align: 'left' as const,
-      // },
+      {
+        header: 'Version',
+        accessor: (pod: Pod) => pod.spec,
+        cell: (value: unknown) => {
+          const spec = value as Pod['spec']
+          const version = spec!.containers[0]!.image
+          return (
+            // <Badge variant="outline" className="text-muted-foreground px-1.5">
+            <span className="text-muted-foreground px-1.5">
+              {version.replace(/typesense\/typesense:/g, '')}
+            </span>
+            // </Badge>
+          )
+        },
+      },
       {
         header: 'Ready',
         accessor: (pod: Pod) => {

@@ -471,3 +471,43 @@ export interface ResourceHistoryResponse {
     hasPrevPage: boolean
   }
 }
+
+
+// Typesense Healthcheck Endpoint
+export interface NodeStatus {
+  committed_index: number
+  queued_writes: number
+  state: 'LEADER' | 'FOLLOWER' | 'CANDIDATE' | 'UNKNOWN'
+}
+
+export interface NodeHealthStatus {
+  ok: boolean
+}
+
+export interface NodeHealthCheck {
+  node_status: NodeStatus
+  node_health: NodeHealthStatus
+}
+
+export interface HealthCheckResponse {
+  cluster_status: string
+  cluster_health: boolean
+  nodes_health_check: {
+    [podName: string]: NodeHealthCheck
+  }
+}
+
+export interface PodHealth {
+  podName: string
+  namespace: string
+  state: 'LEADER' | 'FOLLOWER' | 'CANDIDATE' | 'UNKNOWN'
+  healthy: boolean
+  committedIndex: number
+  queuedWrites: number
+  timestamp: string
+  error?: string
+}
+
+export interface PodHealthData {
+  [key: string]: PodHealth  // key: namespace/podName
+}

@@ -15,7 +15,7 @@ import { Container } from 'kubernetes-types/core/v1'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
-import { updateResource, useResource, useResourcesWatch } from '@/lib/api'
+import { updateResource, useResource, useResourceHealth, useResourcesWatch } from '@/lib/api'
 import { formatDate, translateError } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -79,6 +79,15 @@ export function StatefulSetDetail(props: { namespace: string; name: string; isNe
     {
       labelSelector,
       enabled: !!statefulset?.spec?.selector.matchLabels,
+    }
+  )
+
+  const { health: podHealth, isLoading: isLoadingHealth } = useResourceHealth(
+    namespace,
+    labelSelector,
+    {
+      enabled: !!labelSelector,
+      podHealthEndpoint: 'localhost:8088/readyz'  // Configure endpoint here
     }
   )
 
@@ -465,7 +474,8 @@ export function StatefulSetDetail(props: { namespace: string; name: string; isNe
           content: (
             <PodTable
               pods={relatedPods}
-              isLoading={isLoadingPods}
+              health={podHealth}
+              isLoading={isLoadingPods || isLoadingHealth}
               labelSelector={labelSelector}
               allowLink={false}
             />
