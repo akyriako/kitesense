@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import {
   IconCircleCheckFilled,
   IconExclamationCircle,
@@ -90,6 +90,16 @@ export function StatefulSetDetail(props: { namespace: string; name: string; isNe
       podHealthEndpoint: 'localhost:8088/readyz'  // Configure endpoint here
     }
   )
+
+    // Sort pods by name alphabetically
+  const sortedPods = useMemo(() => {
+    if (!relatedPods) return undefined
+    return [...relatedPods].sort((a, b) => {
+      const nameA = a.metadata?.name || ''
+      const nameB = b.metadata?.name || ''
+      return nameA.localeCompare(nameB)
+    })
+  }, [relatedPods])
 
   useEffect(() => {
     if (statefulset) {
@@ -473,7 +483,7 @@ export function StatefulSetDetail(props: { namespace: string; name: string; isNe
           ),
           content: (
             <PodTable
-              pods={relatedPods}
+              pods={sortedPods}
               health={podHealth}
               isLoading={isLoadingPods || isLoadingHealth}
               labelSelector={labelSelector}
