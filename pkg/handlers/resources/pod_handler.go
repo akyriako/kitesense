@@ -505,7 +505,8 @@ func (h *PodHandler) checkPodHealth(c *gin.Context, pod *corev1.Pod, endpoint st
 		return status
 	}
 
-	podFQDN := pod.Name + "." + pod.Name + "-sts-svc"
+	podName := pod.Name
+	podFQDN := podName + "." + podName[:len(podName)-2] + "-svc"
 	if nodeCheck, ok := healthResp.NodesHealthCheck[podFQDN]; ok {
 		status.State = nodeCheck.NodeStatus.State
 		status.CommittedIndex = nodeCheck.NodeStatus.CommittedIndex
