@@ -68,9 +68,9 @@ export function PodTable(props: {
           const healthData = props.health?.[key]
 
           const stateColors = {
-            'LEADER': 'bg-blue-200',
-            'FOLLOWER': 'bg-green-200',
-            'CANDIDATE': 'bg-pink-200',
+            'LEADER': 'bg-blue-400',
+            'FOLLOWER': 'bg-green-600',
+            'CANDIDATE': 'bg-pink-600',
             'UNKNOWN': 'bg-gray-400',
           }
 
