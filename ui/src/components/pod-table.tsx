@@ -67,7 +67,7 @@ export function PodTable(props: {
           const key = (meta?.namespace || '') + '/' + (podName as string)
           const healthData = props.health?.[key]
 
-          if (!healthData) return <Badge variant="outline" className="text-muted-foreground px-1.5">{'Not Available'}</Badge>
+          if (!healthData) return <Badge variant="outline" className="text-muted-foreground px-1.5">{'NOT_AVAILABLE'}</Badge>
 
           const hState = healthData.state
             // healthData.state.charAt(0).toUpperCase() +
