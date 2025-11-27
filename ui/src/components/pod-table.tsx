@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { IconLoader, IconCircleDottedLetterL, IconCircleDottedLetterC, IconCircleDottedLetterF, IconCircleDottedLetterU } from '@tabler/icons-react'
+import { IconLoader, IconCircleDottedLetterL, IconCircleDottedLetterC, IconCircleDottedLetterF, IconCircleDottedLetterU, IconCircleXFilled } from '@tabler/icons-react'
 import { Pod } from 'kubernetes-types/core/v1'
 import { Link } from 'react-router-dom'
 
@@ -12,6 +12,8 @@ import { PodStatusIcon } from './pod-status-icon'
 import { Column, SimpleTable } from './simple-table'
 import { Badge } from './ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
+import { Proportions } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 export function PodTable(props: {
   pods?: PodWithMetrics[]
@@ -69,15 +71,17 @@ export function PodTable(props: {
             'LEADER': 'bg-blue-200',
             'FOLLOWER': 'bg-green-200',
             'CANDIDATE': 'bg-pink-200',
-            'UNKNOWN': 'bg-gray-200',
+            'UNKNOWN': 'bg-gray-400',
           }
 
-          if (!healthData) return <Badge variant="outline" className="text-muted-foreground px-1.5">{'Unknown'}</Badge>
+          if (!healthData) return <Badge variant="outline" className="text-muted-foreground px-1.5">{'Not Available'}</Badge>
+
+          const hState =
+            healthData.state.charAt(0).toUpperCase() +
+            healthData.state.slice(1).toLowerCase();
 
           return (
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className={`${stateColors[healthData.state] || stateColors.UNKNOWN}`}>{healthData.state}</Badge>
-            </div>
+            <Badge variant="default" className={`${stateColors[healthData.state] || stateColors.UNKNOWN}`}>{hState}</Badge>
           )
         },
       },
@@ -92,15 +96,27 @@ export function PodTable(props: {
 
           if (!healthData) return (
             <Badge variant="outline" className="text-muted-foreground px-1.5">
-              {'Unknown'}
+              {'Not Available'}
             </Badge>
           )
 
           if (healthData.error) {
             return (
-              <Badge variant="destructive" className="text-xs">
-                Error: {healthData.error}
-              </Badge>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge variant="destructive" className="text-xs">
+                    {/* <IconCircleXFilled className={`w-8 h-8`} /> */}
+                    {'Whoopsie!'}
+
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className='overflow-auto max-w-120 whitespace-pre-wrap'>
+                    {healthData.error}
+                  </p>
+                </TooltipContent>
+              </Tooltip>
             )
           }
 
@@ -138,7 +154,7 @@ export function PodTable(props: {
         cell: (value: unknown) => value as string,
       },
       {
-        header: 'Restart',
+        header: 'Restarts',
         accessor: (pod: Pod) => {
           const status = getPodStatus(pod)
           return status.restartString || '0'
@@ -182,38 +198,38 @@ export function PodTable(props: {
           return <MetricCell type="memory" metrics={value as MetricsData} />
         },
       },
-      // {
-      //   header: 'IP',
-      //   accessor: (pod: Pod) => pod.status?.podIP || '-',
-      //   cell: (value: unknown) => (
-      //     <span className="text-sm text-muted-foreground font-mono">
-      //       {value as string}
-      //     </span>
-      //   ),
-      // },
-      // ...(props.hiddenNode
-      //   ? []
-      //   : [
-      //     {
-      //       header: 'Node',
-      //       accessor: (pod: Pod) => pod.spec?.nodeName || '-',
-      //       cell: (value: unknown) => (
-      //         allowLink ? (
-      //           <Link
-      //             to={`/nodes/${value}`}
-      //             className="text-blue-600 hover:text-blue-800 hover:underline"
-      //           >
-      //             {value as string}
-      //           </Link>
-      //         ) : (
-      //           <span className="text-sm text-muted-foreground font-mono">
-      //             {value as string}
-      //           </span>
-      //         )
-      //       ),
-      //     },
-      //   ]
-      // ),
+      {
+        header: 'IP',
+        accessor: (pod: Pod) => pod.status?.podIP || '-',
+        cell: (value: unknown) => (
+          <span className="text-sm text-muted-foreground font-mono">
+            {value as string}
+          </span>
+        ),
+      },
+      ...(props.hiddenNode
+        ? []
+        : [
+          {
+            header: 'Node',
+            accessor: (pod: Pod) => pod.spec?.nodeName || '-',
+            cell: (value: unknown) => (
+              allowLink ? (
+                <Link
+                  to={`/nodes/${value}`}
+                  className="text-blue-600 hover:text-blue-800 hover:underline"
+                >
+                  {value as string}
+                </Link>
+              ) : (
+                <span className="text-sm text-muted-foreground font-mono">
+                  {value as string}
+                </span>
+              )
+            ),
+          },
+        ]
+      ),
       {
         header: 'Created',
         accessor: (pod: Pod) => pod.metadata?.creationTimestamp || '',
@@ -226,7 +242,7 @@ export function PodTable(props: {
         },
       },
     ],
-    [props.hiddenNode]
+    [props.hiddenNode, props.health]
   )
 
   if (isLoading) {

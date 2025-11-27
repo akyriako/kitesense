@@ -169,6 +169,7 @@ func (h *PodHandler) List(c *gin.Context) {
 func (h *PodHandler) registerCustomRoutes(group *gin.RouterGroup) {
 	// watch pods in namespace (or _all)
 	group.GET("/:namespace/watch", h.Watch)
+	group.GET("/:namespace/health/watch", h.WatchHealth)
 }
 
 // writeSSE writes a single SSE event with the given name and payload
@@ -306,4 +307,221 @@ func (h *PodHandler) Watch(c *gin.Context) {
 			}
 		}
 	}
+}
+
+// Typesense Pods Healthcheck
+
+type PodHealthStatus struct {
+	PodName        string    `json:"podName"`
+	Namespace      string    `json:"namespace"`
+	State          string    `json:"state"` // LEADER, FOLLOWER, CANDIDATE, UNKNOWN
+	Healthy        bool      `json:"healthy"`
+	CommittedIndex int64     `json:"committedIndex"`
+	QueuedWrites   int64     `json:"queuedWrites"`
+	Timestamp      time.Time `json:"timestamp"`
+	Error          string    `json:"error,omitempty"`
+}
+
+type HealthCheckResponse struct {
+	ClusterStatus    string                      `json:"cluster_status"`
+	ClusterHealth    bool                        `json:"cluster_health"`
+	NodesHealthCheck map[string]NodeHealthDetail `json:"nodes_health_check"`
+}
+
+type NodeHealthDetail struct {
+	NodeStatus NodeStateInfo  `json:"node_status"`
+	NodeHealth NodeHealthInfo `json:"node_health"`
+}
+
+type NodeStateInfo struct {
+	CommittedIndex int64  `json:"committed_index"`
+	QueuedWrites   int64  `json:"queued_writes"`
+	State          string `json:"state"`
+}
+
+type NodeHealthInfo struct {
+	Ok bool `json:"ok"`
+}
+
+// WatchHealth implements SSE-based health check monitoring for pods
+func (h *PodHandler) WatchHealth(c *gin.Context) {
+	cs := c.MustGet("cluster").(*cluster.ClientSet)
+
+	// Parse params
+	namespace := c.Param("namespace")
+	if namespace == "" {
+		namespace = "_all"
+	}
+
+	labelSelector := c.Query("labelSelector")
+	healthEndpoint := c.DefaultQuery("healthEndpoint", "localhost:8088/readyz")
+
+	listOpts := metav1.ListOptions{}
+	if labelSelector != "" {
+		listOpts.LabelSelector = labelSelector
+	}
+
+	ns := namespace
+	if ns == "_all" {
+		ns = ""
+	}
+
+	// Watch pods
+	watchInterface, err := cs.K8sClient.ClientSet.CoreV1().Pods(ns).Watch(c, listOpts)
+	if err != nil {
+		_ = writeSSE(c, "error", gin.H{"error": fmt.Sprintf("failed to start watch: %v", err)})
+		return
+	}
+	defer watchInterface.Stop()
+
+	// Track current pod health states
+	podHealthMap := make(map[string]*PodHealthStatus)
+
+	// Initial health check on all pods
+	podList, err := cs.K8sClient.ClientSet.CoreV1().Pods(ns).List(c, listOpts)
+	if err == nil {
+		for i := range podList.Items {
+			pod := &podList.Items[i]
+			key := pod.Namespace + "/" + pod.Name
+
+			health := h.checkPodHealth(c, pod, healthEndpoint)
+			podHealthMap[key] = health
+
+			_ = writeSSE(c, "snapshot", podHealthMap)
+		}
+	}
+
+	// Keep-alive and periodic health check
+	ticker := time.NewTicker(15 * time.Second)
+	defer ticker.Stop()
+
+	flusher, _ := c.Writer.(http.Flusher)
+
+	for {
+		select {
+		case <-c.Request.Context().Done():
+			_ = writeSSE(c, "close", gin.H{"message": "connection closed"})
+			return
+
+		case <-ticker.C:
+			// Periodic health check on all pods
+			podList, err := cs.K8sClient.ClientSet.CoreV1().Pods(ns).List(c, listOpts)
+			if err != nil {
+				klog.Warningf("Failed to list pods for health check: %v", err)
+				continue
+			}
+
+			for i := range podList.Items {
+				pod := &podList.Items[i]
+				key := pod.Namespace + "/" + pod.Name
+
+				// Check health and compare with previous state
+				newHealth := h.checkPodHealth(c, pod, healthEndpoint)
+
+				// Only send update if state changed
+				if oldHealth, exists := podHealthMap[key]; !exists || hasHealthChanged(oldHealth, newHealth) {
+					podHealthMap[key] = newHealth
+					_ = writeSSE(c, "updated", newHealth)
+				}
+			}
+
+			_, _ = fmt.Fprintf(c.Writer, ": ping\n\n")
+			flusher.Flush()
+
+		case event, ok := <-watchInterface.ResultChan():
+			if !ok {
+				_ = writeSSE(c, "close", gin.H{"message": "watch channel closed"})
+				return
+			}
+
+			pod, ok := event.Object.(*corev1.Pod)
+			if !ok || pod == nil {
+				continue
+			}
+
+			key := pod.Namespace + "/" + pod.Name
+
+			switch event.Type {
+			case watch.Added:
+				health := h.checkPodHealth(c, pod, healthEndpoint)
+				podHealthMap[key] = health
+				_ = writeSSE(c, "updated", health)
+
+			case watch.Modified:
+				health := h.checkPodHealth(c, pod, healthEndpoint)
+				if oldHealth, exists := podHealthMap[key]; !exists || hasHealthChanged(oldHealth, health) {
+					podHealthMap[key] = health
+					_ = writeSSE(c, "updated", health)
+				}
+
+			case watch.Deleted:
+				if _, exists := podHealthMap[key]; exists {
+					delete(podHealthMap, key)
+					_ = writeSSE(c, "removed", gin.H{
+						"podName":   pod.Name,
+						"namespace": pod.Namespace,
+					})
+				}
+			}
+		}
+	}
+}
+
+// checkPodHealth probes a pod's health endpoint and extracts status
+func (h *PodHandler) checkPodHealth(c *gin.Context, pod *corev1.Pod, endpoint string) *PodHealthStatus {
+	status := &PodHealthStatus{
+		PodName:   pod.Name,
+		Namespace: pod.Namespace,
+		Timestamp: time.Now(),
+		State:     "UNKNOWN",
+		Healthy:   false,
+	}
+
+	if pod.Status.PodIP == "" {
+		status.Error = "Pod IP not assigned"
+		return status
+	}
+
+	url := fmt.Sprintf("http://%s:8808/readyz", pod.Status.PodIP)
+	httpClient := &http.Client{
+		Timeout: 5 * time.Second,
+	}
+
+	resp, err := httpClient.Get(url)
+	if err != nil {
+		status.Error = fmt.Sprintf("Health check failed: %v", err)
+		return status
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		status.Error = fmt.Sprintf("HTTP %d", resp.StatusCode)
+		return status
+	}
+
+	var healthResp HealthCheckResponse
+	if err := json.NewDecoder(resp.Body).Decode(&healthResp); err != nil {
+		status.Error = fmt.Sprintf("Failed to parse response: %v", err)
+		return status
+	}
+
+	podFQDN := pod.Name + "." + pod.Name + "-sts-svc"
+	if nodeCheck, ok := healthResp.NodesHealthCheck[podFQDN]; ok {
+		status.State = nodeCheck.NodeStatus.State
+		status.CommittedIndex = nodeCheck.NodeStatus.CommittedIndex
+		status.QueuedWrites = nodeCheck.NodeStatus.QueuedWrites
+		status.Healthy = nodeCheck.NodeHealth.Ok
+	}
+
+	if !healthResp.ClusterHealth {
+		status.Error = "Cluster unhealthy"
+	}
+
+	return status
+}
+
+func hasHealthChanged(old, new *PodHealthStatus) bool {
+	return old.State != new.State ||
+		old.Healthy != new.Healthy ||
+		old.Error != new.Error
 }

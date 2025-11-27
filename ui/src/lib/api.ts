@@ -1538,7 +1538,7 @@ export function useResourceHealth(
   labelSelector?: string,
   options?: { 
     enabled?: boolean
-    podHealthEndpoint?: string  // e.g., 'localhost:8088/readyz'
+    // podHealthEndpoint?: string  // e.g., 'localhost:8088/readyz'
   }
 ) {
   const [health, setHealth] = useState<PodHealthData | undefined>(undefined)
@@ -1556,9 +1556,9 @@ export function useResourceHealth(
     }
     
     // Pass the health endpoint to query
-    if (options?.podHealthEndpoint) {
-      params.append('healthEndpoint', options.podHealthEndpoint)
-    }
+    // if (options?.podHealthEndpoint) {
+    //   params.append('healthEndpoint', options.podHealthEndpoint)
+    // }
     
     const cluster = localStorage.getItem('current-cluster')
     if (cluster) params.append('x-cluster-name', cluster)
@@ -1566,7 +1566,7 @@ export function useResourceHealth(
     return withSubPath(
       `${API_BASE_URL}/pods/${ns}/health/watch?${params.toString()}`
     )
-  }, [namespace, labelSelector, options?.podHealthEndpoint])
+  }, [namespace, labelSelector])
 
   const disconnect = useCallback(() => {
     if (eventSourceRef.current) {
