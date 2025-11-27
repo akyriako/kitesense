@@ -500,7 +500,7 @@ export interface HealthCheckResponse {
 export interface PodHealth {
   podName: string
   namespace: string
-  state: 'LEADER' | 'FOLLOWER' | 'CANDIDATE' | 'UNKNOWN'
+  state: 'LEADER' | 'FOLLOWER' | 'CANDIDATE' | 'UNKNOWN' | 'NOT_READY'
   healthy: boolean
   committedIndex: number
   queuedWrites: number

@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { IconLoader, IconCircleDottedLetterL, IconCircleDottedLetterC, IconCircleDottedLetterF, IconCircleDottedLetterU, IconCircleXFilled } from '@tabler/icons-react'
+import { IconLoader, IconCircleCheckFilled, IconCircleChevronsRightFilled, IconCircleChevronsUpFilled, IconCircleDotFilled, IconAlertTriangleFilled } from '@tabler/icons-react'
 import { Pod } from 'kubernetes-types/core/v1'
 import { Link } from 'react-router-dom'
 
@@ -67,22 +67,49 @@ export function PodTable(props: {
           const key = (meta?.namespace || '') + '/' + (podName as string)
           const healthData = props.health?.[key]
 
-          const stateColors = {
-            'LEADER': 'bg-blue-400',
-            'FOLLOWER': 'bg-green-600',
-            'CANDIDATE': 'bg-pink-600',
-            'UNKNOWN': 'bg-gray-400',
-          }
-
           if (!healthData) return <Badge variant="outline" className="text-muted-foreground px-1.5">{'Not Available'}</Badge>
 
-          const hState =
-            healthData.state.charAt(0).toUpperCase() +
-            healthData.state.slice(1).toLowerCase();
+          const hState = healthData.state
+            // healthData.state.charAt(0).toUpperCase() +
+            // healthData.state.slice(1).toLowerCase();
 
-          return (
-            <Badge variant="default" className={`${stateColors[healthData.state] || stateColors.UNKNOWN}`}>{hState}</Badge>
-          )
+          switch (healthData.state) {
+            case 'LEADER':
+              return (
+                <Badge variant="outline" className="text-muted-foreground px-1.5">
+                  <IconCircleCheckFilled className={`fill-blue-400 dark:fill-blue-400 `} />
+                  {hState}
+                </Badge>
+              )
+            case 'FOLLOWER':
+              return (
+                <Badge variant="outline" className="text-muted-foreground px-1.5">
+                  <IconCircleChevronsRightFilled className={`fill-amber-200 dark:fill-amber-200 `} />
+                  {hState}
+                </Badge>
+              )
+            case 'CANDIDATE':
+              return (
+                <Badge variant="outline" className="text-muted-foreground px-1.5">
+                  <IconCircleChevronsUpFilled className={`fill-pink-400 dark:fill-pink-400 `} />
+                  {hState}
+                </Badge>
+              )
+            case 'UNKNOWN':
+              return (
+                <Badge variant="outline" className="text-muted-foreground px-1.5">
+                  <IconCircleDotFilled className={`fill-gray-400 dark:fill-gray-400 `} />
+                  {hState}
+                </Badge>
+              )
+            case 'NOT_READY':
+              return (
+                <Badge variant="outline" className="text-muted-foreground px-1.5">
+                  <IconCircleDotFilled className={`fill-gray-400 dark:fill-gray-400 `} />
+                  {hState}
+                </Badge>
+              )
+          }
         },
       },
       {
@@ -95,9 +122,7 @@ export function PodTable(props: {
           const healthData = props.health?.[key]
 
           if (!healthData) return (
-            <Badge variant="outline" className="text-muted-foreground px-1.5">
-              {'Not Available'}
-            </Badge>
+            <IconAlertTriangleFilled className="fill-yellow-400 dark:fill-yellow-400 px-0.5 ml-4" />
           )
 
           if (healthData.error) {
@@ -105,11 +130,7 @@ export function PodTable(props: {
 
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Badge variant="destructive" className="text-xs">
-                    {/* <IconCircleXFilled className={`w-8 h-8`} /> */}
-                    {'Whoopsie!'}
-
-                  </Badge>
+                  <IconAlertTriangleFilled className="fill-yellow-400 dark:fill-yellow-400 px-0.5 ml-4" />
                 </TooltipTrigger>
                 <TooltipContent>
                   <p className='overflow-auto max-w-120 whitespace-pre-wrap'>
@@ -121,14 +142,18 @@ export function PodTable(props: {
           }
 
           return (
-            <Badge
-              variant={healthData.healthy ? 'default' : 'destructive'}
-              className={healthData.healthy ? 'bg-green-500' : 'bg-red-500'}
-            >
-              {healthData.healthy ? 'Healthy' : 'Unhealthy'}
-            </Badge>
+            <>
+              {healthData?.healthy ? (
+                <IconCircleCheckFilled className="fill-green-400 dark:fill-green-400 px-0.5 ml-4" />
+
+              ) : (
+                <IconLoader className="animate-spin ml-4" />
+              )}
+
+            </>
           )
         },
+        align: 'left' as const
       },
       {
         header: 'Version',

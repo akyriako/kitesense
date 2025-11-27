@@ -53,7 +53,7 @@ export function StatefulSetDetail(props: { namespace: string; name: string; isNe
   const [scaleReplicas, setScaleReplicas] = useState(0)
   const [refreshKey, setRefreshKey] = useState(0)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [refreshInterval, setRefreshInterval] = useState<number>(5000)
+  const [refreshInterval, setRefreshInterval] = useState<number>(1000)
 
   const { t } = useTranslation()
 
@@ -116,7 +116,7 @@ export function StatefulSetDetail(props: { namespace: string; name: string; isNe
         isStable,
       })
       if (isStable) {
-        setRefreshInterval(5000)
+        setRefreshInterval(3000)
       }
     }
   }, [statefulset, refreshInterval, name])
