@@ -233,8 +233,8 @@ export const updateResource = async <T extends ResourceType>(
 
 type DeepPartial<T> = T extends object
   ? {
-      [P in keyof T]?: DeepPartial<T[P]>
-    }
+    [P in keyof T]?: DeepPartial<T[P]>
+  }
   : T
 export const patchResource = async <T extends ResourceType>(
   resource: T,
@@ -475,6 +475,15 @@ export function useResourcesWatch<T extends ResourceType>(
 
       es.onerror = () => {
         setIsConnected(false)
+        setError(new Error('SSE connection lost'))
+
+        const reconnectDelay = 3000
+        console.warn(`SSE connection error for ${resource} in ${namespace}, reconnecting in ${reconnectDelay}ms...`)
+
+        setTimeout(() => {
+          console.log(`Attempting to reconnect ${resource}...`)
+          connect()
+        }, reconnectDelay)
       }
     } catch (err) {
       if (err instanceof Error) setError(err)
@@ -1536,7 +1545,7 @@ export const deleteAPIKey = async (
 export function useResourceHealth(
   namespace: string,
   labelSelector?: string,
-  options?: { 
+  options?: {
     enabled?: boolean
     // podHealthEndpoint?: string  // e.g., 'localhost:8088/readyz'
   }
@@ -1550,19 +1559,19 @@ export function useResourceHealth(
   const buildUrl = useCallback(() => {
     const ns = namespace || '_all'
     const params = new URLSearchParams()
-    
+
     if (labelSelector) {
       params.append('labelSelector', labelSelector)
     }
-    
+
     // Pass the health endpoint to query
     // if (options?.podHealthEndpoint) {
     //   params.append('healthEndpoint', options.podHealthEndpoint)
     // }
-    
+
     const cluster = localStorage.getItem('current-cluster')
     if (cluster) params.append('x-cluster-name', cluster)
-    
+
     return withSubPath(
       `${API_BASE_URL}/pods/${ns}/health/watch?${params.toString()}`
     )
@@ -1577,7 +1586,7 @@ export function useResourceHealth(
 
   const connect = useCallback(() => {
     if (options?.enabled === false) return
-    
+
     const url = buildUrl()
     setError(null)
     setIsConnected(false)
@@ -1635,9 +1644,15 @@ export function useResourceHealth(
       })
 
       es.onerror = () => {
-        setError(new Error('Health check stream error'))
+        console.warn('Health check SSE connection lost, attempting reconnect...')
+        setError(new Error('Health check stream error - reconnecting'))
         setIsConnected(false)
         setIsLoading(false)
+
+        setTimeout(() => {
+          console.log('Reconnecting health check...')
+          connect()
+        }, 3000)
       }
 
       es.addEventListener('error', (e: MessageEvent<string>) => {
@@ -1672,12 +1687,12 @@ export function useResourceHealth(
     return () => disconnect()
   }, [connect, disconnect, options?.enabled])
 
-  return { 
-    health, 
-    isLoading, 
-    error, 
-    isConnected, 
-    refetch, 
-    stop: disconnect 
+  return {
+    health,
+    isLoading,
+    error,
+    isConnected,
+    refetch,
+    stop: disconnect
   }
 }
