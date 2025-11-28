@@ -158,8 +158,8 @@ export function PodTable(props: {
                 <TooltipTrigger asChild>
                   <IconAlertTriangleFilled className="fill-yellow-400 dark:fill-yellow-400 px-0.5 ml-4" />
                 </TooltipTrigger>
-                <TooltipContent>
-                  <p className='overflow-auto max-w-120 whitespace-pre-wrap'>
+                <TooltipContent className="max-w-xs">
+                  <p className='whitespace-pre-wrap break-words'>
                     {healthData.error}
                   </p>
                 </TooltipContent>
