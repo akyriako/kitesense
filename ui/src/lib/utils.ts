@@ -56,8 +56,6 @@ export function getAge(timestamp: string): string {
   }
 }
 
-import { format, formatDistance } from 'date-fns'
-
 export function formatDate(timestamp: string, addTo = false): string {
   try {
     const date = new Date(timestamp)
@@ -70,6 +68,22 @@ export function formatDate(timestamp: string, addTo = false): string {
     return addTo ? `${s} (${formatDistance(new Date(), date)})` : s
   } catch (err) {
     return timestamp
+  }
+}
+
+export function formatDate2(timestamp: string, addTo = false): { formatted: string; distance: string } {
+  try {
+    const date = new Date(timestamp)
+
+    // invalid date → return raw timestamp
+    if (isNaN(date.getTime())) return { formatted: timestamp, distance: '' }
+
+    const formatted = format(date, 'yyyy-MM-dd HH:mm:ss zzzz')
+    const distance = addTo ? formatDistance(new Date(), date) : 'Now'
+
+    return { formatted, distance }
+  } catch (err) {
+    return { formatted: timestamp, distance: '' }
   }
 }
 

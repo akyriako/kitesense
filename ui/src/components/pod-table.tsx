@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom'
 
 import { MetricsData, PodHealthData, PodWithMetrics } from '@/types/api'
 import { getPodStatus } from '@/lib/k8s'
-import { formatDate } from '@/lib/utils'
+import { formatDate2 } from '@/lib/utils'
 
 import { MetricCell } from './metrics-cell'
 import { PodStatusIcon } from './pod-status-icon'
@@ -44,7 +44,7 @@ export function PodTable(props: {
               className={
                 allowLink
                   ? "font-medium" // keep underline on <Link> itself (cleaner UX)
-                  : "font-medium text-blue-500 hover:underline cursor-pointer"
+                  : "font-medium text-blue-500"
               }
             >
               {allowLink ? (
@@ -55,24 +55,26 @@ export function PodTable(props: {
                   {meta?.name}
                 </Link>
               ) : isNested ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    {/* asChild hands the trigger to this element */}
-                    <p className="inline-block m-0">{meta?.name}</p>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <div className="flex flex-col gap-1">
-                      <div className="flex justify-between">
-                        <span>IP:</span>
-                        <span className="text-right ml-2">{pod.status?.podIP ?? "-"}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Node:</span>
-                        <span className="text-right ml-2">{pod.spec?.nodeName ?? "-"}</span>
-                      </div>
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
+                // <Tooltip>
+                //   <TooltipTrigger asChild>
+                //     {/* asChild hands the trigger to this element */}
+                //     <p className="inline-block m-0">{meta?.name}</p>
+                //   </TooltipTrigger>
+                //   <TooltipContent>
+                //     <div className="flex flex-col gap-1">
+                //       <div className="flex justify-between">
+                //         <span>IP:</span>
+                //         <span className="text-right ml-2">{pod.status?.podIP ?? "-"}</span>
+                //       </div>
+                //       <div className="flex justify-between">
+                //         <span>Node:</span>
+                //         <span className="text-right ml-2">{pod.spec?.nodeName ?? "-"}</span>
+                //       </div>
+                //     </div>
+                //   </TooltipContent>
+                // </Tooltip>
+                <span>{meta?.name}</span>
+
               ) : (
                 <span>{meta?.name}</span>
               )}
@@ -280,13 +282,21 @@ export function PodTable(props: {
         ]
       ),
       {
-        header: 'Created',
+        header: 'Age',
         accessor: (pod: Pod) => pod.metadata?.creationTimestamp || '',
         cell: (value: unknown) => {
-          return (
-            <span className="text-muted-foreground text-sm">
-              {formatDate(value as string, true)}
-            </span>
+          const { formatted, distance } = formatDate2(value as string, true)
+          return distance ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="text-muted-foreground text-sm cursor-help">
+                  {distance}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>{formatted}</TooltipContent>
+            </Tooltip>
+          ) : (
+            <span className="text-muted-foreground text-sm">{formatted}</span>
           )
         },
       },
@@ -315,10 +325,10 @@ export function PodTable(props: {
   const podColumnsFiltered = podColumns
     .filter(col =>
       !(!isNested && ["Raft Role", "Healthy", "Version", "Actions"].includes(col.header))
-    )
-    .filter(col =>
-      !(isNested && ["IP", "Node"].includes(col.header))
     );
+  // .filter(col =>
+  //   !(isNested && ["IP", "Node"].includes(col.header))
+  // );
 
 
   if (isLoading) {
@@ -352,9 +362,9 @@ export function PodTable(props: {
       <ResourceDeleteConfirmationDialog
         open={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}
-        resourceName={selectedPodName || ''}  
+        resourceName={selectedPodName || ''}
         resourceType="pods"
-        namespace={selectedPodNamespace || ''}  
+        namespace={selectedPodNamespace || ''}
         navigateBack={isNested}
       />
     </>
