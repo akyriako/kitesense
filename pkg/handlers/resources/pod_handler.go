@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/zxh326/kite/pkg/cluster"
 	"github.com/zxh326/kite/pkg/kube"
+	"golang.org/x/sync/semaphore"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
@@ -22,12 +24,24 @@ import (
 
 type PodHandler struct {
 	*GenericResourceHandler[*corev1.Pod, *corev1.PodList]
+	healthCheckSem *semaphore.Weighted
+	inCluster      bool
 }
 
 func NewPodHandler() *PodHandler {
 	return &PodHandler{
 		GenericResourceHandler: NewGenericResourceHandler[*corev1.Pod, *corev1.PodList]("pods", false, true),
+		healthCheckSem:         semaphore.NewWeighted(3), // Max 3 concurrent health checks
+		inCluster:              isInCluster(),
 	}
+}
+
+// isInCluster detects if we're running inside or outside the cluster
+// In-cluster: /var/run/secrets/kubernetes.io/serviceaccount/token exists
+// Out-of-cluster: file doesn't exist
+func isInCluster() bool {
+	_, err := os.Stat("/var/run/secrets/kubernetes.io/serviceaccount/token")
+	return err == nil
 }
 
 type PodMetrics struct {
@@ -392,11 +406,20 @@ func (h *PodHandler) WatchHealth(c *gin.Context) {
 			pod := &podList.Items[i]
 			key := pod.Namespace + "/" + pod.Name
 
+			// Acquire semaphore permit (max 3 concurrent)
+			if err := h.healthCheckSem.Acquire(c.Request.Context(), 1); err != nil {
+				klog.Warningf("Failed to acquire semaphore for initial check of %s: %v", key, err)
+				continue
+			}
+
+			// SYNCHRONOUS execution - tunnel closes BEFORE we acquire next permit
 			health := h.checkPodHealth(c, pod, healthEndpoint)
 			podHealthMap[key] = health
 
-			_ = writeSSE(c, "snapshot", podHealthMap)
+			h.healthCheckSem.Release(1)
 		}
+
+		_ = writeSSE(c, "snapshot", podHealthMap)
 	}
 
 	// Keep-alive and periodic health check
@@ -423,7 +446,13 @@ func (h *PodHandler) WatchHealth(c *gin.Context) {
 				pod := &podList.Items[i]
 				key := pod.Namespace + "/" + pod.Name
 
-				// Check health and compare with previous state
+				// Acquire semaphore permit (max 3 concurrent)
+				if err := h.healthCheckSem.Acquire(c.Request.Context(), 1); err != nil {
+					klog.Warningf("Failed to acquire semaphore for pod %s: %v", key, err)
+					continue
+				}
+
+				// SYNCHRONOUS execution - tunnel closes BEFORE we acquire next permit
 				newHealth := h.checkPodHealth(c, pod, healthEndpoint)
 
 				// Only send update if state changed
@@ -431,6 +460,8 @@ func (h *PodHandler) WatchHealth(c *gin.Context) {
 					podHealthMap[key] = newHealth
 					_ = writeSSE(c, "updated", newHealth)
 				}
+
+				h.healthCheckSem.Release(1)
 			}
 
 			_, _ = fmt.Fprintf(c.Writer, ": ping\n\n")
@@ -451,16 +482,34 @@ func (h *PodHandler) WatchHealth(c *gin.Context) {
 
 			switch event.Type {
 			case watch.Added:
+				// Acquire semaphore permit
+				if err := h.healthCheckSem.Acquire(c.Request.Context(), 1); err != nil {
+					klog.Warningf("Failed to acquire semaphore for added pod %s: %v", key, err)
+					continue
+				}
+
+				// SYNCHRONOUS execution - tunnel closes immediately after health check
 				health := h.checkPodHealth(c, pod, healthEndpoint)
 				podHealthMap[key] = health
 				_ = writeSSE(c, "updated", health)
 
+				h.healthCheckSem.Release(1)
+
 			case watch.Modified:
+				// Acquire semaphore permit
+				if err := h.healthCheckSem.Acquire(c.Request.Context(), 1); err != nil {
+					klog.Warningf("Failed to acquire semaphore for modified pod %s: %v", key, err)
+					continue
+				}
+
+				// SYNCHRONOUS execution
 				health := h.checkPodHealth(c, pod, healthEndpoint)
 				if oldHealth, exists := podHealthMap[key]; !exists || hasHealthChanged(oldHealth, health) {
 					podHealthMap[key] = health
 					_ = writeSSE(c, "updated", health)
 				}
+
+				h.healthCheckSem.Release(1)
 
 			case watch.Deleted:
 				if _, exists := podHealthMap[key]; exists {
@@ -530,8 +579,50 @@ func (h *PodHandler) applyHealthRespToStatus(pod *corev1.Pod, healthResp *Health
 }
 
 // checkPodHealth probes a pod's health endpoint using the specified strategy
+// Auto-detection logic:
+//   - If healthStrategy is explicit, use that strategy
+//   - If healthStrategy is not passed:
+//   - In-cluster: try direct, fallback to portforward → proxy
+//   - Out-of-cluster: try portforward, fallback to proxy
 func (h *PodHandler) checkPodHealth(c *gin.Context, pod *corev1.Pod, endpoint string) *PodHealthStatus {
-	strategy := strings.ToLower(c.DefaultQuery("healthStrategy", "direct"))
+	strategyParam := c.Query("healthStrategy")
+
+	// If explicit strategy provided, use it
+	if strategyParam != "" {
+		return h.checkPodHealthWithStrategy(c, pod, endpoint, strings.ToLower(strategyParam))
+	}
+
+	// Auto-detect strategy based on whether we're in-cluster
+	if h.inCluster {
+		// In-cluster: try direct first (fastest), fallback to portforward, then proxy
+		result := h.checkPodHealthWithStrategy(c, pod, endpoint, "direct")
+		if result.Error == "" {
+			return result
+		}
+		klog.V(3).Infof("Direct strategy failed for %s/%s, trying portforward", pod.Namespace, pod.Name)
+
+		result = h.checkPodHealthWithStrategy(c, pod, endpoint, "portforward")
+		if result.Error == "" {
+			return result
+		}
+		klog.V(3).Infof("Portforward strategy failed for %s/%s, trying proxy", pod.Namespace, pod.Name)
+
+		return h.checkPodHealthWithStrategy(c, pod, endpoint, "proxy")
+	} else {
+		// Out-of-cluster: try proxy first, fallback to portforward (works everywhere)
+		result := h.checkPodHealthWithStrategy(c, pod, endpoint, "proxy")
+		if result.Error == "" {
+			return result
+		}
+		klog.V(3).Infof("proxy strategy failed for %s/%s, trying portforward", pod.Namespace, pod.Name)
+
+		return h.checkPodHealthWithStrategy(c, pod, endpoint, "portforward")
+	}
+}
+
+// checkPodHealthWithStrategy performs health check with a specific strategy
+func (h *PodHandler) checkPodHealthWithStrategy(c *gin.Context, pod *corev1.Pod, endpoint string, strategy string) *PodHealthStatus {
+	strategy = strings.ToLower(strategy)
 
 	switch strategy {
 	case "direct":
