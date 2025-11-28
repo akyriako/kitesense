@@ -488,6 +488,7 @@ export function StatefulSetDetail(props: { namespace: string; name: string; isNe
               isLoading={isLoadingPods || isLoadingHealth}
               labelSelector={labelSelector}
               allowLink={false}
+              isNested={true}
             />
           ),
         },

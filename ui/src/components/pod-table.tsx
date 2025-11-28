@@ -12,7 +12,6 @@ import { PodStatusIcon } from './pod-status-icon'
 import { Column, SimpleTable } from './simple-table'
 import { Badge } from './ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
-import { Proportions } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 export function PodTable(props: {
@@ -22,8 +21,9 @@ export function PodTable(props: {
   isLoading?: boolean
   hiddenNode?: boolean
   allowLink?: boolean
+  isNested?: boolean
 }) {
-  const { pods, health, isLoading, allowLink = true } = props
+  const { pods, health, isLoading, allowLink = true, isNested = false } = props
 
   // Pod table columns
   const podColumns = useMemo(
@@ -67,7 +67,8 @@ export function PodTable(props: {
           const key = (meta?.namespace || '') + '/' + (podName as string)
           const healthData = props.health?.[key]
 
-          if (!healthData) return <Badge variant="outline" className="text-muted-foreground px-1.5">{'NOT_AVAILABLE'}</Badge>
+          if (!healthData) return (<></>)
+          // <Badge variant="outline" className="text-muted-foreground px-1.5">{'NOT_AVAILABLE'}</Badge>
 
           const hState = healthData.state
             // healthData.state.charAt(0).toUpperCase() +
@@ -270,6 +271,10 @@ export function PodTable(props: {
     [props.hiddenNode, props.health]
   )
 
+  const filteredpodColumns = !isNested
+    ? podColumns.filter(podColumn => podColumn.header !== 'Raft Role' && podColumn.header !== 'Healthy' && podColumn.header !== 'Version')
+    : podColumns
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -286,7 +291,7 @@ export function PodTable(props: {
       <CardContent>
         <SimpleTable
           data={pods || []}
-          columns={podColumns}
+          columns={filteredpodColumns}
           emptyMessage="No pods found"
           pagination={{
             enabled: true,
