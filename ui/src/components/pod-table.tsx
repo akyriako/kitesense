@@ -1,5 +1,5 @@
-import { useMemo } from 'react'
-import { IconLoader, IconCircleCheckFilled, IconCircleChevronsRightFilled, IconCircleChevronsUpFilled, IconCircleDotFilled, IconAlertTriangleFilled } from '@tabler/icons-react'
+import { useMemo, useState } from 'react'
+import { IconLoader, IconCircleCheckFilled, IconCircleChevronsRightFilled, IconCircleChevronsUpFilled, IconCircleDotFilled, IconAlertTriangleFilled, IconTrash } from '@tabler/icons-react'
 import { Pod } from 'kubernetes-types/core/v1'
 import { Link } from 'react-router-dom'
 
@@ -13,6 +13,8 @@ import { Column, SimpleTable } from './simple-table'
 import { Badge } from './ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { Button } from '@/components/ui/button'
+import { ResourceDeleteConfirmationDialog } from '@/components/resource-delete-confirmation-dialog'
 
 export function PodTable(props: {
   pods?: PodWithMetrics[]
@@ -24,39 +26,60 @@ export function PodTable(props: {
   isNested?: boolean
 }) {
   const { pods, health, isLoading, allowLink = true, isNested = false } = props
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [selectedPodName, setSelectedPodName] = useState<string>('')
+  const [selectedPodNamespace, setSelectedPodNamespace] = useState<string>('')
 
   // Pod table columns
   const podColumns = useMemo(
     (): Column<PodWithMetrics>[] => [
       {
         header: 'Name',
-        accessor: (pod: Pod) => pod.metadata,
+        accessor: (pod: Pod) => pod,
         cell: (value: unknown) => {
-          const meta = value as Pod['metadata']
+          const pod = value as Pod
+          const meta = pod['metadata']
           return (
-            // <div className="font-medium text-blue-500 hover:underline">
-            //   <Link to={`/pods/${meta!.namespace}/${meta!.name}`}>
-            //     {meta!.name}
-            //   </Link>
-            // </div>
             <div
               className={
                 allowLink
-                  ? "font-medium hover:underline"
-                  : "font-medium text-foreground"  // no hover, no underline
+                  ? "font-medium" // keep underline on <Link> itself (cleaner UX)
+                  : "font-medium text-blue-500 hover:underline cursor-pointer"
               }
             >
               {allowLink ? (
-                <Link to={`/pods/${meta!.namespace}/${meta!.name}`}>
-                  {meta!.name}
+                <Link
+                  to={`/pods/${meta?.namespace}/${meta?.name}`}
+                  className="hover:underline" // place hover styling on the link itself
+                >
+                  {meta?.name}
                 </Link>
+              ) : isNested ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    {/* asChild hands the trigger to this element */}
+                    <p className="inline-block m-0">{meta?.name}</p>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <div className="flex flex-col gap-1">
+                      <div className="flex justify-between">
+                        <span>IP:</span>
+                        <span className="text-right ml-2">{pod.status?.podIP ?? "-"}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Node:</span>
+                        <span className="text-right ml-2">{pod.spec?.nodeName ?? "-"}</span>
+                      </div>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
               ) : (
-                meta!.name
+                <span>{meta?.name}</span>
               )}
             </div>
-          )
+          );
         },
-        align: 'left' as const,
+        align: "left" as const,
       },
       {
         header: 'Raft Role',
@@ -71,8 +94,8 @@ export function PodTable(props: {
           // <Badge variant="outline" className="text-muted-foreground px-1.5">{'NOT_AVAILABLE'}</Badge>
 
           const hState = healthData.state
-            // healthData.state.charAt(0).toUpperCase() +
-            // healthData.state.slice(1).toLowerCase();
+          // healthData.state.charAt(0).toUpperCase() +
+          // healthData.state.slice(1).toLowerCase();
 
           switch (healthData.state) {
             case 'LEADER':
@@ -267,13 +290,36 @@ export function PodTable(props: {
           )
         },
       },
+      {
+        header: 'Actions',
+        accessor: (pod: Pod) => pod || '',
+        cell: (value: unknown) => {
+          const pod = value as Pod
+          return (
+            <Button variant="destructive" size="sm"
+              onClick={() => {
+                setSelectedPodName(pod.metadata?.name || '')
+                setSelectedPodNamespace(pod.metadata?.namespace || '')
+                setIsDeleteDialogOpen(true)
+              }}
+            >
+              <IconTrash className="w-4 h-4" />
+            </Button>
+          )
+        },
+      },
     ],
     [props.hiddenNode, props.health]
   )
 
-  const filteredpodColumns = !isNested
-    ? podColumns.filter(podColumn => podColumn.header !== 'Raft Role' && podColumn.header !== 'Healthy' && podColumn.header !== 'Version')
-    : podColumns
+  const podColumnsFiltered = podColumns
+    .filter(col =>
+      !(!isNested && ["Raft Role", "Healthy", "Version", "Actions"].includes(col.header))
+    )
+    .filter(col =>
+      !(isNested && ["IP", "Node"].includes(col.header))
+    );
+
 
   if (isLoading) {
     return (
@@ -284,22 +330,34 @@ export function PodTable(props: {
     )
   }
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Pods</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <SimpleTable
-          data={pods || []}
-          columns={filteredpodColumns}
-          emptyMessage="No pods found"
-          pagination={{
-            enabled: true,
-            pageSize: 20,
-            showPageInfo: true,
-          }}
-        />
-      </CardContent>
-    </Card>
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle>Pods</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <SimpleTable
+            data={pods || []}
+            columns={podColumnsFiltered}
+            emptyMessage="No pods found"
+            pagination={{
+              enabled: true,
+              pageSize: 20,
+              showPageInfo: true,
+            }}
+          />
+        </CardContent>
+      </Card>
+
+      <ResourceDeleteConfirmationDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        resourceName={selectedPodName || ''}  
+        resourceType="pods"
+        namespace={selectedPodNamespace || ''}  
+        navigateBack={isNested}
+      />
+    </>
+
   )
 }

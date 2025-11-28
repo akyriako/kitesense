@@ -91,7 +91,7 @@ export function StatefulSetDetail(props: { namespace: string; name: string; isNe
     }
   )
 
-    // Sort pods by name alphabetically
+  // Sort pods by name alphabetically
   const sortedPods = useMemo(() => {
     if (!relatedPods) return undefined
     return [...relatedPods].sort((a, b) => {
@@ -741,6 +741,7 @@ export function StatefulSetDetail(props: { namespace: string; name: string; isNe
         resourceName={metadata?.name || ''}
         resourceType="statefulsets"
         namespace={namespace}
+        navigateBack={isNested}
       />
     </div>
   )

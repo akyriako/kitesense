@@ -16,6 +16,7 @@ interface ResourceDeleteConfirmationDialogProps {
   resourceType: ResourceType
   namespace?: string
   additionalNote?: string
+  navigateBack?: boolean
 }
 
 export function ResourceDeleteConfirmationDialog({
@@ -25,6 +26,7 @@ export function ResourceDeleteConfirmationDialog({
   resourceType,
   namespace,
   additionalNote,
+  navigateBack = false,
 }: ResourceDeleteConfirmationDialogProps) {
   const [isDeleting, setIsDeleting] = useState(false)
   const navigate = useNavigate()
@@ -38,7 +40,13 @@ export function ResourceDeleteConfirmationDialog({
         wait,
       })
       toast.success(`${resourceType.slice(0, -1)} deleted successfully`)
-      navigate(`/${resourceType}`)
+
+      if (navigateBack) {
+      onOpenChange(false)  // Just close the dialog
+    } else {
+      navigate(`/${resourceType}`)  // Navigate to resource list
+    }
+
     } catch (error) {
       toast.error(translateError(error, t))
     } finally {

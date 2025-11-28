@@ -768,6 +768,7 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
                 resourceName={name}
                 resourceType={resourceType}
                 namespace={namespace}
+                navigateBack={true}
             />
         </div>
     )
