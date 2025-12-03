@@ -22,8 +22,9 @@ import { ResourceDeleteConfirmationDialog } from '@/components/resource-delete-c
 import { ResourceHistoryTable } from '@/components/resource-history-table'
 import { YamlEditor } from '@/components/yaml-editor'
 import { NestedResponsiveTabs } from '@/components/ui/nested-responsive-tabs'
+import { Badge } from '@/components/ui/badge'
 
-export function SimpleResourceDetail<T extends ResourceType>(props: {
+export function IngressDetail<T extends ResourceType>(props: {
   resourceType: T
   name: string
   namespace?: string
@@ -74,6 +75,8 @@ export function SimpleResourceDetail<T extends ResourceType>(props: {
     await handleRefresh()
   }
 
+  console.log(data?.status)
+
   if (isLoading) {
     return (
       <div className="p-6">
@@ -116,46 +119,59 @@ export function SimpleResourceDetail<T extends ResourceType>(props: {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label className="text-xs text-muted-foreground">
-                    Created
+                    Ingress Class Name
                   </Label>
                   <p className="text-sm">
-                    {formatDate(data.metadata?.creationTimestamp || '')}
+                    <Badge variant="outline" className='mt-2'>
+                      {data.spec?.ingressClassName || 'standard'}
+                    </Badge>
+                  </p>
+
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">
+                    Host
+                  </Label>
+                  <p className="text-sm hover:underline text-blue-600">
+                    <Link to={`https://${data.spec?.rules[0].host}`} target="_blank">
+                      {data.spec?.rules[0].host || ''}
+                    </Link>
                   </p>
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">
-                    UID
+                    Secret
                   </Label>
-                  <p className="text-sm font-mono">
-                    {data.metadata?.uid || 'N/A'}
+                  <p className="text-sm">
+                    {data.spec?.tls[0]?.secretName || '-'}
                   </p>
                 </div>
-                {/* {getOwnerInfo(data.metadata) && (
-                  <div>
-                    <Label className="text-xs text-muted-foreground">
-                      Owner
-                    </Label>
-                    <p className="text-sm">
-                      {(() => {
-                        const ownerInfo = getOwnerInfo(data.metadata)
-                        if (!ownerInfo) {
-                          return 'No owner'
-                        }
-                        const ownerText = `${ownerInfo.kind}/${ownerInfo.name}`
-                        return isNested ? (
-                          ownerText
-                        ) : (
-                          <Link
-                            to={ownerInfo.path}
-                            className="text-blue-600 hover:text-blue-800 hover:underline"
-                          >
-                            {ownerText}
-                          </Link>
-                        )
-                      })()}
-                    </p>
-                  </div>
-                )} */}
+                <div>
+                  <Label className="text-xs text-muted-foreground">
+                    Path
+                  </Label>
+                  <p className="text-sm">
+                    {data.spec?.rules[0]?.http?.paths[0]?.path || '/'}
+                  </p>
+                </div>
+                <div></div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">
+                    IP Addresses
+                  </Label>
+                  <p className="text-sm">
+                    {data.status?.loadBalancer?.ingress?.length > 0 ? (
+                      data.status.loadBalancer.ingress.map((item, index) => (
+                        <span key={index}>
+                          {item.ip || item.hostname}
+                          {index < data.status.loadBalancer.ingress.length - 1 && <br />}
+                        </span>
+                      ))
+                    ) : (
+                      '-'
+                    )}
+                  </p>
+                </div>
               </div>
               <LabelsAnno
                 labels={data.metadata?.labels || {}}
@@ -220,9 +236,9 @@ export function SimpleResourceDetail<T extends ResourceType>(props: {
     },
   ]
 
-  const filteredTabsList = isNested 
-  ? tabsList.filter(tab => tab.value !== 'simple-Related')
-  : tabsList
+  const filteredTabsList = isNested
+    ? tabsList.filter(tab => tab.value !== 'simple-Related')
+    : tabsList
 
   const TabsComponent = isNested ? NestedResponsiveTabs : ResponsiveTabs
 

@@ -46,6 +46,7 @@ import { ServiceDetail } from './service-detail'
 import { SecretDetail } from './secret-detail'
 import { StatefulSetDetail } from './statefulset-detail'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { IngressDetail } from './ingress-detail'
 
 export function TypesenseClusterDetail<T extends ResourceType>(props: {
     resourceType: T
@@ -692,8 +693,7 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
                                         <CardTitle>Headless Service</CardTitle>
                                     </CardHeader>
                                     <CardContent>
-                                        <SimpleResourceDetail
-                                            resourceType='services'
+                                        <ServiceDetail
                                             name={`${name}-sts-svc`}
                                             namespace={namespace}
                                             isNested={true}
@@ -713,7 +713,7 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
                                     <CardTitle>Ingress</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <SimpleResourceDetail
+                                    <IngressDetail
                                         resourceType='ingresses'
                                         name={`${name}-reverse-proxy`}
                                         namespace={namespace}
