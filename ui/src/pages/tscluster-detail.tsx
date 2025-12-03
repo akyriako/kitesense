@@ -410,6 +410,189 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
                                                 </p>
                                             </div>
                                             <div></div>
+
+                                            {/* Requests */}
+                                            <div>
+                                                <Label className="text-xs font-medium text-muted-foreground tracking-wide">
+                                                    Requests
+                                                </Label>
+                                                <div className="mt-1 min-h-[24px]">
+                                                    {data.spec.resources &&
+                                                        (data.spec.resources.requests ||
+                                                            data.spec.resources.limits) ? (
+                                                        <div className="space-y-2">
+                                                            {data.spec.resources.requests && (
+                                                                <div>
+                                                                    {/* <div className="text-xs font-medium text-green-600 dark:text-green-400">
+                                                                        Requests
+                                                                    </div> */}
+                                                                    <div className="text-sm space-y-1">
+                                                                        {data.spec.resources.requests.cpu && (
+                                                                            <div className="flex gap-2">
+                                                                                <span className="text-muted-foreground">
+                                                                                    CPU:
+                                                                                </span>
+                                                                                <span>{data.spec.resources.requests.cpu}</span>
+                                                                            </div>
+                                                                        )}
+                                                                        {data.spec.resources.requests.memory && (
+                                                                            <div className="flex gap-2">
+                                                                                <span className="text-muted-foreground">
+                                                                                    Memory:
+                                                                                </span>
+                                                                                <span>
+                                                                                    {data.spec.resources.requests.memory}
+                                                                                </span>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                            {/* {data.spec.resources.limits && (
+                                                                <div>
+                                                                    <div className="text-xs font-medium text-red-600 dark:text-red-400">
+                                                                        Limits
+                                                                    </div>
+                                                                    <div className="text-sm space-y-1">
+                                                                        {data.spec.resources.limits.cpu && (
+                                                                            <div className="flex gap-2">
+                                                                                <span className="text-muted-foreground">
+                                                                                    CPU:
+                                                                                </span>
+                                                                                <span>{data.spec.resources.limits.cpu}</span>
+                                                                            </div>
+                                                                        )}
+                                                                        {data.spec.resources.limits.memory && (
+                                                                            <div className="flex gap-2">
+                                                                                <span className="text-muted-foreground">
+                                                                                    Memory:
+                                                                                </span>
+                                                                                <span>{data.spec.resources.limits.memory}</span>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            )} */}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="space-y-2">
+                                                                <div>
+                                                                    {/* <div className="text-xs font-medium text-green-600 dark:text-green-400">
+                                                                        Requests
+                                                                    </div> */}
+                                                                    <div className="text-sm space-y-1">
+                                                                            <div className="flex gap-2">
+                                                                                <span className="text-muted-foreground">
+                                                                                    CPU:
+                                                                                </span>
+                                                                                <span>100m</span>
+                                                                            </div>
+                                                                            <div className="flex gap-2">
+                                                                                <span className="text-muted-foreground">
+                                                                                    Memory:
+                                                                                </span>
+                                                                                <span>
+                                                                                    256Mi
+                                                                                </span>
+                                                                            </div>
+                                                                    </div>
+                                                                </div>
+                                        
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            {/* Limits */}
+                                            <div>
+                                                <Label className="text-xs font-medium text-muted-foreground tracking-wide">
+                                                    Limits
+                                                </Label>
+                                                <div className="mt-1 min-h-[24px]">
+                                                    {data.spec.resources &&
+                                                        (data.spec.resources.requests ||
+                                                            data.spec.resources.limits) ? (
+                                                        <div className="space-y-2">
+                                                            {/* {data.spec.resources.requests && (
+                                                                <div>
+                                                                    <div className="text-xs font-medium text-green-600 dark:text-green-400">
+                                                                        Requests
+                                                                    </div>
+                                                                    <div className="text-sm space-y-1">
+                                                                        {data.spec.resources.requests.cpu && (
+                                                                            <div className="flex gap-2">
+                                                                                <span className="text-muted-foreground">
+                                                                                    CPU:
+                                                                                </span>
+                                                                                <span>{data.spec.resources.requests.cpu}</span>
+                                                                            </div>
+                                                                        )}
+                                                                        {data.spec.resources.requests.memory && (
+                                                                            <div className="flex gap-2">
+                                                                                <span className="text-muted-foreground">
+                                                                                    Memory:
+                                                                                </span>
+                                                                                <span>
+                                                                                    {data.spec.resources.requests.memory}
+                                                                                </span>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            )} */}
+                                                            {data.spec.resources.limits && (
+                                                                <div>
+                                                                    {/* <div className="text-xs font-medium text-red-600 dark:text-red-400">
+                                                                        Limits
+                                                                    </div> */}
+                                                                    <div className="text-sm space-y-1">
+                                                                        {data.spec.resources.limits.cpu && (
+                                                                            <div className="flex gap-2">
+                                                                                <span className="text-muted-foreground">
+                                                                                    CPU:
+                                                                                </span>
+                                                                                <span>{data.spec.resources.limits.cpu}</span>
+                                                                            </div>
+                                                                        )}
+                                                                        {data.spec.resources.limits.memory && (
+                                                                            <div className="flex gap-2">
+                                                                                <span className="text-muted-foreground">
+                                                                                    Memory:
+                                                                                </span>
+                                                                                <span>{data.spec.resources.limits.memory}</span>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="space-y-2">
+                                                                <div>
+                                                                    {/* <div className="text-xs font-medium text-green-600 dark:text-green-400">
+                                                                        Requests
+                                                                    </div> */}
+                                                                    <div className="text-sm space-y-1">
+                                                                            <div className="flex gap-2">
+                                                                                <span className="text-muted-foreground">
+                                                                                    CPU:
+                                                                                </span>
+                                                                                <span>1</span>
+                                                                            </div>
+                                                                            <div className="flex gap-2">
+                                                                                <span className="text-muted-foreground">
+                                                                                    Memory:
+                                                                                </span>
+                                                                                <span>
+                                                                                    512Mi
+                                                                                </span>
+                                                                            </div>
+                                                                    </div>
+                                                                </div>
+                                        
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
                                         </div>
                                         <LabelsAnno
                                             labels={data.metadata?.labels || {}}
@@ -435,20 +618,20 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
                                             </div>
                                             <div>
                                                 <p className="text-xs text-muted-foreground">
-                                                    Size
+                                                    Size (per Node)
                                                 </p>
                                                 <p className="text-sm font-medium">
                                                     {data?.spec?.storage?.size || '100Mi'}
                                                 </p>
                                             </div>
-                                            <div>
+                                            {/* <div>
                                                 <p className="text-xs text-muted-foreground">
                                                     Resources
                                                 </p>
                                                 <p className="text-sm font-medium">
                                                     {data?.spec?.storage?.size || '100Mi'}
                                                 </p>
-                                            </div>
+                                            </div> */}
                                         </div>
 
                                     </CardContent>
