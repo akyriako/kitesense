@@ -48,32 +48,43 @@ export function VolumeTable({
   const getVolumeDetails = (volume: Volume): React.ReactNode => {
     if (volume.persistentVolumeClaim) {
       return (
-        <Link
-          to={`/persistentvolumeclaims/${namespace}/${volume.persistentVolumeClaim.claimName}`}
-          className="text-blue-600 hover:underline"
-        >
+        // <Link
+        //   to={`/persistentvolumeclaims/${namespace}/${volume.persistentVolumeClaim.claimName}`}
+        //   className="text-blue-600 hover:underline"
+        // >
+        //   {volume.persistentVolumeClaim.claimName}
+        // </Link>
+        <>
           {volume.persistentVolumeClaim.claimName}
-        </Link>
+        </>
+
       )
     }
     if (volume.configMap) {
       return (
-        <Link
-          to={`/configmaps/${namespace}/${volume.configMap.name}`}
-          className="text-blue-600 hover:underline"
-        >
-          {volume.configMap.name || 'N/A'}
-        </Link>
+        // <Link
+        //   to={`/configmaps/${namespace}/${volume.configMap.name}`}
+        //   className="text-blue-600 hover:underline"
+        // >
+        //   {volume.configMap.name || 'N/A'}
+        // </Link>
+        <>
+                  {volume.configMap.name || 'N/A'}
+
+        </>
       )
     }
     if (volume.secret) {
       return (
-        <Link
-          to={`/secrets/${namespace}/${volume.secret.secretName}`}
-          className="text-blue-600 hover:underline"
-        >
-          {volume.secret.secretName || 'N/A'}
-        </Link>
+        // <Link
+        //   to={`/secrets/${namespace}/${volume.secret.secretName}`}
+        //   className="text-blue-600 hover:underline"
+        // >
+        // </Link>
+        <>
+                  {volume.secret.secretName || 'N/A'}
+
+        </>
       )
     }
     if (volume.hostPath) {

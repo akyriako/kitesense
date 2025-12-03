@@ -199,7 +199,7 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
                         disabled={isLoadingTypesenseCluster}
                         variant="outline"
                         size="sm"
-                        onClick={handleRefresh}
+                        onClick={handleManualRefresh}
                     >
                         <IconRefresh className="w-4 h-4" />
                         Refresh
