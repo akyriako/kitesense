@@ -1,32 +1,76 @@
-# Kite - Modern Kubernetes Dashboard
+# Kitesense
 
 <div align="center">
 
-<img src="./docs/assets/logo.svg" alt="Kite Logo" width="128" height="128">
+<img src="./docs/assets/kitesense-banner.png" alt="Kitesense Logo" >
 
-_A modern, intuitive Kubernetes dashboard_
+<br/>
 
 [![Go Version](https://img.shields.io/badge/Go-1.24+-00ADD8?style=flat&logo=go)](https://golang.org)
 [![React](https://img.shields.io/badge/React-19+-61DAFB?style=flat&logo=react)](https://reactjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5+-3178C6?style=flat&logo=typescript)](https://www.typescriptlang.org)
 [![License](https://img.shields.io/badge/License-Apache-green.svg)](LICENSE)
 
-[**Live Demo**](https://kite-demo.zzde.me) | [**Documentation**](https://kite.zzde.me)
-<br>
-**English** | [中文](./README_zh.md)
-
 </div>
 
-Kite is a lightweight, modern Kubernetes dashboard that provides an intuitive interface for managing and monitoring your Kubernetes clusters. It offers real-time metrics, comprehensive resource management, multi-cluster support, and a beautiful user experience.
+**Kitesense** is a dedicated control center for running and manage Typesense on any Kubernetes cluster. It lets you launch and operate Typesense deployments anywhere, track their health, and coordinate multiple environments from a single place. Designed for clarity and speed, Kitesense streamlines the entire lifecycle of your search infrastructure. Your Typesense clusters, anywhere, anytime. Run them how you like them.
 
-> [!WARNING]
-> This project is currently in rapid development and testing, and the usage and API may change.
+> [!IMPORTANT]
+> Kitesense is a repurposed derivative of the original [Kite](https://github.com/zxh326/kite) project. All credit for the foundation and core design goes to the Kite maintainers.
 
-![Dashboard Overview](docs/screenshots/overview.png)
-_Comprehensive cluster overview with real-time metrics and resource statistics_
+![Dashboard Overview](docs/screenshots/quorum.png)
+_Analytical cluster and quorum overview with real-time monitoring of raft nodes_
+
+## 📦 Project Status
+
+- Latest version: **0.3.5**
+- Contributions welcome! See [FAQ](https://akyriako.github.io/typesense-operator-docs/docs/faq) and [Development](https://akyriako.github.io/typesense-operator-docs/docs/development)
+
+### Relationship to the Upstream
+
+Kitesense is a **hard-fork** of the open-source project [Kite](https://github.com/zxh326/kite). This means the codebase was copied at a specific point in time and then adapted, restructured, and extended to serve a different purpose: managing and deploying Typesense clusters on any Kubernetes environment.
+
+Because of the above:
+
+- Kitesense evolves independently. Development is no longer tied to the direction, roadmap, or release cycle of the original Kite project.
+- Features and behavior may diverge. While Kitesense inherited foundational components from Kite, its functionality, UI, and architecture will continue to shift toward the needs of Typesense deployment and lifecycle management.
+- Upstream updates are not automatically merged. Improvements made in Kite after the fork will not be pulled in unless explicitly adopted and manually integrated and only when they align with Kitesense’s goals.
+- Credit remains with the original authors. The core concepts and initial implementation were made possible by the Kite maintainers, whose work provided the starting point for this project.
+
+Kitesense stands on the shoulders of Kite, but is developed as its own focused, long-term solution for Typesense cluster orchestration.
+
 
 ## ✨ Features
 
+In addition to all the [features delivered by Kite](https://github.com/zxh326/kite?tab=readme-ov-file#-features), Kitesense is adding the following:
+
+### 🤖 **Typesense Kubernetes Operator**
+
+- ⚙️ **Lifecycle Management** - Independent TyKO configuration, management or update for each cluster
+- 📄 **Live Helm Chart Values Editing** - Built-in Monaco editor with syntax highlighting and validation
+- 📊 **Real-time Metrics** - CPU, memory, and network usage charts by Prometheus and kube-state metrics
+- 📝 **Live Logs** - Stream real-time reconciliation logs for each ones of your Typesense clusters
+
+### ⚡️ **Typesense Clusters**
+
+- 📄 **Live `TypesenseCluster` Manifest Editing** - Change Typesense specs from the built-in editor
+- 🔦 **Detailed Related Resource Views** - In-depth information for secrets, volumes, services and ingress
+- 🚦 **Real-time Quorum/Raft/Pod State** - Quorum state, nodes role in raft, nodes health 
+- 📊 **Real-time Statefulset/Pod Metrics** - CPU, memory, and network usage charts 
+- 📝 **Live Logs** - Stream real-time Typesense nodes logs
+- 💻 **Web/Node Terminal** - Execute commands directly in pods/typesense nodes through the browser
+
+### 🧩 **Templates**
+- 🔦 **Ready Manifests for Common Cases** - In-depth information for the DocSearch scrapers cronjobs 
+- 🔦 **Ready Manifests per Cloud Provider** - In-depth information for the DocSearch scrapers cronjobs 
+
+### 🕷️ **DocSearch Scrapers**
+- 🔦 **Detailed Resource View** - In-depth information for the DocSearch scrapers cronjobs 
+- 📊 **Real-time Metrics** - CPU, memory, and network usage charts by Prometheus and kube-state metrics
+
+---
+
+<!-- 
 ### 🎯 **Modern User Experience**
 
 - 🌓 **Multi-Theme Support** - Dark/light/color themes with system preference detection
@@ -67,88 +111,119 @@ _Comprehensive cluster overview with real-time metrics and resource statistics_
 - 🛡️ **OAuth Integration** - Supports OAuth management in the UI
 - 🔒 **Role-Based Access Control** - Supports user permission management in the UI
 - 👥 **User Management** - Comprehensive user management and role allocation in the UI
+ -->
 
----
 
-## 🚀 Quick Start
+## 🪁 Get Started
 
-For detailed instructions, please refer to the [documentation](https://kite.zzde.me/guide/installation.html).
+Kitesense can be installed as a solo Docker container, as optional component of [TyKO](https://github.com/akyriako/typesense-operator) (Typesense Kubernetes Operator) or as independent deployment in a separate management cluster designated to manage all your Typesense clusters on local or remote Kubernetes environments.
 
 ### Docker
 
-To run Kite using Docker, you can use the pre-built image:
+To run Kitesense using Docker:
 
 ```bash
-docker run --rm -p 8080:8080 ghcr.io/zxh326/kite:latest
+docker run --rm -p 8080:8080 akyriako78/kitesense:latest
 ```
 
-### Deploy in Kubernetes
+### Docker Compose
 
-#### Using Helm (Recommended)
+```bash
+docker run --rm -p 8080:8080 akyriako78/kitesense:latest
+```
 
-1. **Add Helm repository**
+### Kubernetes
 
-   ```bash
-   helm repo add kite https://zxh326.github.io/kite
-   helm repo update
+```bash
+helm repo add kitesense https://akyriako.github.io/kitesense
+helm repo update
+
+helm upgrade --install kitesense kitesense/kitesense -n typesense-system --create-namespace
+```
+
+### Local Development
+
+#### Clone the repository
+
+```bash
+git clone https://github.com/akyriako/kitesense.git
+cd kitesense
    ```
 
-2. **Install with default values**
+#### Build the project
 
-   ```bash
-   helm install kite kite/kite -n kube-system
-   ```
+```bash
+make deps
+make build
+```
 
-#### Using kubectl
+#### Run the static build
 
-1. **Apply deployment manifests**
+```bash
+make run
+```
 
-   ```bash
-   kubectl apply -f deploy/install.yaml
-   # or install it online
-   kubectl apply -f https://raw.githubusercontent.com/zxh326/kite/refs/heads/main/deploy/install.yaml
-   ```
+#### Run with hot reload
 
-2. **Access via port-forward**
+```bash
+make dev
+```
 
-   ```bash
-   kubectl port-forward -n kube-system svc/kite 8080:8080
-   ```
+Open now your browser and navigate to http://localhost:5173 to use Kitesense in development mode.
 
-### Build from Source
+> [!IMPORTANT]  
+> Any change on the backend Go project will require restarting with `make dev`. The hot-reloading feature applies only for frontend TypeScript changes.
 
-#### 📋 Prerequisites
+### Remote Container Development
 
-1. **Clone the repository**
+Any IDE that supports [Dev Containers](https://code.visualstudio.com/docs/devcontainers/containers), but in this case everything is tailored for Visual Studio Code, will build a container with all the necessary prerequisites to get you started creating content immediately based on the extensions
+and features defined in **devcontainer.json**. A `typescript-node:1-20-bookworm` container will be spawned with the following extras pre-installed:
 
-   ```bash
-   git clone https://github.com/zxh326/kite.git
-   cd kite
-   ```
+* **Visual Studio Code Extensions**
 
-2. **Build the project**
+  - JavaScript and TypeScript Nightly
+  - React Native Tools
+  - ES7+ React/Redux/React-Native snippets, Simple React Snippets
+  - Simple React Snippets
+  - Npm Intellisense, Npm Dependency, Path Intellisense
+  - Git Graph
+  - Resource Monitor
+  - YAML
+  - Thunder Client
+  - Go
+  - NeoXP Golang Tools
 
-   ```bash
-   make deps
-   make build
-   ```
+* **Features**
 
-3. **Run the server**
+  - Git
+  - Docker-in-Docker
+  - Go
+  - GolangCI Lint
+  - GoReleaser
 
-   ```bash
-   make run
-   ```
+* **Post-Create Command**
 
----
+  - `make deps && make build`
 
-## 🔍 Troubleshooting
+#### Add your own Extensions
 
-For troubleshooting, please refer to the [documentation](https://kite.zzde.me).
+You can add your own extensions in your Dev Container and customize it to the fullest. By right-clicking the desired extension in the *Marketplace* and choosing the *Add to devcontainer.json* the extension will be installed and activated the next time you rebuild your Dev Container.
 
-## 🤝 Contributing
+> [!NOTE]  
+> You can afterwards rebuild your container so the changes take effect, with our without using cache, in the latter  case it will rebuild the container from scratch.
 
-We welcome contributions! Please see our [contributing guidelines](https://kite.zzde.me/faq.html#how-can-i-contribute-to-kite) for details on how to get involved.
+#### Git Credentials
 
-## 📄 License
+The Git extension will automatically forward your local **SSH agent**, if one is running otherwise it will use directly the git configuration of your local host. In that way you can take advantage of keeping tight control of your credentials and your SSH keys in one place, your local machine, and not spreading them individually to every new development enviroment.
 
-This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
+## 📚 Documentation
+
+- [Configuration](https://kite.zzde.me/config/) and its documentation are identical to Kite.
+
+## 💬 Community & Support
+
+Join the conversation:
+- **GitHub Discussions**: ask questions, share feedback, submit suggestions or help others
+- **Issues**: report bugs or request features
+
+
