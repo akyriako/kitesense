@@ -208,6 +208,8 @@ export function ServiceDetail(props: { name: string; namespace?: string, isNeste
               onSave={handleSaveYaml}
               onChange={handleYamlChange}
               isSaving={isSavingYaml}
+              showControls={!isReadOnly}
+              readOnly={isReadOnly}
             />
           </div>
         ),
