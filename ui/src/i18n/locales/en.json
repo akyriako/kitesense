@@ -241,6 +241,7 @@
     "error403": "You do not have permission to access this cluster. Please contact your administrator for more information."
   },
   "resourceTable": {
+    "errorNoDataFound": "No items available.",
     "errorLoading": "Error loading {{resourceName}}",
     "tryAgain": "Try Again",
     "delete": "Delete",
