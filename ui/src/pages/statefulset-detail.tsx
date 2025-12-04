@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import {
   IconCircleCheckFilled,
   IconExclamationCircle,
@@ -15,7 +15,7 @@ import { Container } from 'kubernetes-types/core/v1'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
-import { updateResource, useResource, useResourcesWatch } from '@/lib/api'
+import { updateResource, useResource, useResourceHealth, useResourcesWatch } from '@/lib/api'
 import { formatDate, translateError } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -53,7 +53,7 @@ export function StatefulSetDetail(props: { namespace: string; name: string; isNe
   const [scaleReplicas, setScaleReplicas] = useState(0)
   const [refreshKey, setRefreshKey] = useState(0)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [refreshInterval, setRefreshInterval] = useState<number>(5000)
+  const [refreshInterval, setRefreshInterval] = useState<number>(1000)
 
   const { t } = useTranslation()
 
@@ -82,6 +82,25 @@ export function StatefulSetDetail(props: { namespace: string; name: string; isNe
     }
   )
 
+  const { health: podHealth, isLoading: isLoadingHealth } = useResourceHealth(
+    namespace,
+    labelSelector,
+    {
+      enabled: !!labelSelector,
+      podHealthEndpoint: 'localhost:8088/readyz'  // Configure endpoint here
+    }
+  )
+
+  // Sort pods by name alphabetically
+  const sortedPods = useMemo(() => {
+    if (!relatedPods) return undefined
+    return [...relatedPods].sort((a, b) => {
+      const nameA = a.metadata?.name || ''
+      const nameB = b.metadata?.name || ''
+      return nameA.localeCompare(nameB)
+    })
+  }, [relatedPods])
+
   useEffect(() => {
     if (statefulset) {
       setYamlContent(yaml.dump(statefulset, { indent: 2 }))
@@ -107,7 +126,7 @@ export function StatefulSetDetail(props: { namespace: string; name: string; isNe
         isStable,
       })
       if (isStable) {
-        setRefreshInterval(5000)
+        setRefreshInterval(3000)
       }
     }
   }, [statefulset, refreshInterval, name])
@@ -464,10 +483,12 @@ export function StatefulSetDetail(props: { namespace: string; name: string; isNe
           ),
           content: (
             <PodTable
-              pods={relatedPods}
-              isLoading={isLoadingPods}
+              pods={sortedPods}
+              health={podHealth}
+              isLoading={isLoadingPods || isLoadingHealth}
               labelSelector={labelSelector}
               allowLink={false}
+              isNested={true}
             />
           ),
         },
@@ -720,6 +741,7 @@ export function StatefulSetDetail(props: { namespace: string; name: string; isNe
         resourceName={metadata?.name || ''}
         resourceType="statefulsets"
         namespace={namespace}
+        navigateBack={isNested}
       />
     </div>
   )

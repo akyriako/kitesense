@@ -10,6 +10,8 @@ import {
   ImageTagInfo,
   OAuthProvider,
   OverviewData,
+  PodHealth,
+  PodHealthData,
   PodMetrics,
   RelatedResources,
   ResourceHistoryResponse,
@@ -231,8 +233,8 @@ export const updateResource = async <T extends ResourceType>(
 
 type DeepPartial<T> = T extends object
   ? {
-      [P in keyof T]?: DeepPartial<T[P]>
-    }
+    [P in keyof T]?: DeepPartial<T[P]>
+  }
   : T
 export const patchResource = async <T extends ResourceType>(
   resource: T,
@@ -473,6 +475,15 @@ export function useResourcesWatch<T extends ResourceType>(
 
       es.onerror = () => {
         setIsConnected(false)
+        setError(new Error('SSE connection lost'))
+
+        const reconnectDelay = 3000
+        console.warn(`SSE connection error for ${resource} in ${namespace}, reconnecting in ${reconnectDelay}ms...`)
+
+        setTimeout(() => {
+          console.log(`Attempting to reconnect ${resource}...`)
+          connect()
+        }, reconnectDelay)
       }
     } catch (err) {
       if (err instanceof Error) setError(err)
@@ -1527,4 +1538,161 @@ export const deleteAPIKey = async (
   id: number
 ): Promise<{ message: string }> => {
   return await apiClient.delete<{ message: string }>(`/admin/apikeys/${id}`)
+}
+
+// Health check hook, similar to useResourcesWatch but for pod health
+// Health check hook - similar to useResourcesWatch but for pod health
+export function useResourceHealth(
+  namespace: string,
+  labelSelector?: string,
+  options?: {
+    enabled?: boolean
+    // podHealthEndpoint?: string  // e.g., 'localhost:8088/readyz'
+  }
+) {
+  const [health, setHealth] = useState<PodHealthData | undefined>(undefined)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<Error | null>(null)
+  const [isConnected, setIsConnected] = useState(false)
+  const eventSourceRef = useRef<EventSource | null>(null)
+
+  const buildUrl = useCallback(() => {
+    const ns = namespace || '_all'
+    const params = new URLSearchParams()
+
+    if (labelSelector) {
+      params.append('labelSelector', labelSelector)
+    }
+
+    // Pass the health endpoint to query
+    // if (options?.podHealthEndpoint) {
+    //   params.append('healthEndpoint', options.podHealthEndpoint)
+    // }
+
+    const cluster = localStorage.getItem('current-cluster')
+    if (cluster) params.append('x-cluster-name', cluster)
+
+    return withSubPath(
+      `${API_BASE_URL}/pods/${ns}/health/watch?${params.toString()}`
+    )
+  }, [namespace, labelSelector])
+
+  const disconnect = useCallback(() => {
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close()
+      eventSourceRef.current = null
+    }
+  }, [])
+
+  const connect = useCallback(() => {
+    if (options?.enabled === false) return
+
+    const url = buildUrl()
+    setError(null)
+    setIsConnected(false)
+    setIsLoading(true)
+
+    try {
+      const es = new EventSource(url, { withCredentials: true })
+      eventSourceRef.current = es
+
+      es.onopen = () => {
+        setIsConnected(true)
+        setIsLoading(false)
+      }
+
+      // Handle initial snapshot
+      es.addEventListener('snapshot', (e: MessageEvent<string>) => {
+        try {
+          const data = JSON.parse(e.data) as PodHealthData
+          setHealth(data)
+        } catch (err) {
+          console.error('Failed to parse health snapshot:', err)
+        }
+      })
+
+      // Handle individual pod health updates
+      es.addEventListener('updated', (e: MessageEvent<string>) => {
+        try {
+          const podHealth = JSON.parse(e.data) as PodHealth
+          setHealth((prev) => {
+            const key = podHealth.namespace + '/' + podHealth.podName
+            return {
+              ...prev,
+              [key]: podHealth,
+            }
+          })
+        } catch (err) {
+          console.error('Failed to parse health update:', err)
+        }
+      })
+
+      // Handle pod health removal
+      es.addEventListener('removed', (e: MessageEvent<string>) => {
+        try {
+          const { podName, namespace: ns } = JSON.parse(e.data) as { podName: string; namespace: string }
+          setHealth((prev) => {
+            if (!prev) return prev
+            const key = ns + '/' + podName
+            const updated = { ...prev }
+            delete updated[key]
+            return updated
+          })
+        } catch (err) {
+          console.error('Failed to parse health removal:', err)
+        }
+      })
+
+      es.onerror = () => {
+        console.warn('Health check SSE connection lost, attempting reconnect...')
+        setError(new Error('Health check stream error - reconnecting'))
+        setIsConnected(false)
+        setIsLoading(false)
+
+        setTimeout(() => {
+          console.log('Reconnecting health check...')
+          connect()
+        }, 3000)
+      }
+
+      es.addEventListener('error', (e: MessageEvent<string>) => {
+        try {
+          const errorData = JSON.parse(e.data)
+          setError(new Error(errorData.error || 'Health check error'))
+        } catch (err) {
+          setError(new Error('Health check stream error'))
+        }
+        setIsConnected(false)
+      })
+
+      es.addEventListener('close', () => {
+        setIsConnected(false)
+      })
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : 'Connection failed'
+      setError(new Error(errMsg))
+      setIsLoading(false)
+      setIsConnected(false)
+    }
+  }, [buildUrl, options?.enabled])
+
+  const refetch = useCallback(() => {
+    disconnect()
+    setTimeout(connect, 100)
+  }, [disconnect, connect])
+
+  useEffect(() => {
+    if (options?.enabled === false) return
+    connect()
+    return () => disconnect()
+  }, [connect, disconnect, options?.enabled])
+
+  return {
+    health,
+    isLoading,
+    error,
+    isConnected,
+    refetch,
+    stop: disconnect
+  }
 }

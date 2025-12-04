@@ -90,7 +90,7 @@ function RelatedResourceCell({ rs }: { rs: RelatedResources }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <div className="font-medium text-blue-500 hover:underline cursor-pointer">
+        <div className="font-medium text-blue-500 hover:underline hand-pointer">
           {rs.name}
         </div>
       </DialogTrigger>

@@ -133,7 +133,7 @@ export function ServiceDetail(props: { name: string; namespace?: string, isNeste
                       {data.metadata?.uid || 'N/A'}
                     </p>
                   </div>
-                  {getOwnerInfo(data.metadata) && (
+                  {/* {getOwnerInfo(data.metadata) && (
                     <div>
                       <Label className="text-xs text-muted-foreground">
                         Owner
@@ -158,7 +158,7 @@ export function ServiceDetail(props: { name: string; namespace?: string, isNeste
                         })()}
                       </p>
                     </div>
-                  )}
+                  )} */}
                   <div>
                     <Label className="text-xs text-muted-foreground">
                       Ports
@@ -208,6 +208,8 @@ export function ServiceDetail(props: { name: string; namespace?: string, isNeste
               onSave={handleSaveYaml}
               onChange={handleYamlChange}
               isSaving={isSavingYaml}
+              showControls={!isReadOnly}
+              readOnly={isReadOnly}
             />
           </div>
         ),

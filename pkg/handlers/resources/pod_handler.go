@@ -1,14 +1,19 @@
 package resources
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/samber/lo"
 	"github.com/zxh326/kite/pkg/cluster"
+	"github.com/zxh326/kite/pkg/kube"
+	"golang.org/x/sync/semaphore"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
@@ -19,12 +24,24 @@ import (
 
 type PodHandler struct {
 	*GenericResourceHandler[*corev1.Pod, *corev1.PodList]
+	healthCheckSem *semaphore.Weighted
+	inCluster      bool
 }
 
 func NewPodHandler() *PodHandler {
 	return &PodHandler{
 		GenericResourceHandler: NewGenericResourceHandler[*corev1.Pod, *corev1.PodList]("pods", false, true),
+		healthCheckSem:         semaphore.NewWeighted(3), // Max 3 concurrent health checks
+		inCluster:              isInCluster(),
 	}
+}
+
+// isInCluster detects if we're running inside or outside the cluster
+// In-cluster: /var/run/secrets/kubernetes.io/serviceaccount/token exists
+// Out-of-cluster: file doesn't exist
+func isInCluster() bool {
+	_, err := os.Stat("/var/run/secrets/kubernetes.io/serviceaccount/token")
+	return err == nil
 }
 
 type PodMetrics struct {
@@ -169,6 +186,7 @@ func (h *PodHandler) List(c *gin.Context) {
 func (h *PodHandler) registerCustomRoutes(group *gin.RouterGroup) {
 	// watch pods in namespace (or _all)
 	group.GET("/:namespace/watch", h.Watch)
+	group.GET("/:namespace/health/watch", h.WatchHealth)
 }
 
 // writeSSE writes a single SSE event with the given name and payload
@@ -306,4 +324,519 @@ func (h *PodHandler) Watch(c *gin.Context) {
 			}
 		}
 	}
+}
+
+// Typesense Pods Healthcheck
+
+type PodHealthStatus struct {
+	PodName        string    `json:"podName"`
+	Namespace      string    `json:"namespace"`
+	State          string    `json:"state"` // LEADER, FOLLOWER, CANDIDATE, UNKNOWN
+	Healthy        bool      `json:"healthy"`
+	CommittedIndex int64     `json:"committedIndex"`
+	QueuedWrites   int64     `json:"queuedWrites"`
+	Timestamp      time.Time `json:"timestamp"`
+	Error          string    `json:"error,omitempty"`
+}
+
+type HealthCheckResponse struct {
+	ClusterStatus    string                      `json:"cluster_status"`
+	ClusterHealth    bool                        `json:"cluster_health"`
+	NodesHealthCheck map[string]NodeHealthDetail `json:"nodes_health_check"`
+}
+
+type NodeHealthDetail struct {
+	NodeStatus NodeStateInfo  `json:"node_status"`
+	NodeHealth NodeHealthInfo `json:"node_health"`
+}
+
+type NodeStateInfo struct {
+	CommittedIndex int64  `json:"committed_index"`
+	QueuedWrites   int64  `json:"queued_writes"`
+	State          string `json:"state"`
+}
+
+type NodeHealthInfo struct {
+	Ok bool `json:"ok"`
+}
+
+const defaultHealthCheckPort = "8808"
+
+// WatchHealth implements SSE-based health check monitoring for pods
+func (h *PodHandler) WatchHealth(c *gin.Context) {
+	cs := c.MustGet("cluster").(*cluster.ClientSet)
+
+	// Parse params
+	namespace := c.Param("namespace")
+	if namespace == "" {
+		namespace = "_all"
+	}
+
+	labelSelector := c.Query("labelSelector")
+	healthEndpoint := c.DefaultQuery("healthEndpoint", fmt.Sprintf("localhost:%s/readyz", defaultHealthCheckPort))
+
+	// Strategy parameter for selecting health check method: direct, proxy, or portforward
+	_ = c.DefaultQuery("healthStrategy", "direct")
+
+	listOpts := metav1.ListOptions{}
+	if labelSelector != "" {
+		listOpts.LabelSelector = labelSelector
+	}
+
+	ns := namespace
+	if ns == "_all" {
+		ns = ""
+	}
+
+	// Watch pods
+	watchInterface, err := cs.K8sClient.ClientSet.CoreV1().Pods(ns).Watch(c, listOpts)
+	if err != nil {
+		_ = writeSSE(c, "error", gin.H{"error": fmt.Sprintf("failed to start watch: %v", err)})
+		return
+	}
+	defer watchInterface.Stop()
+
+	// Track current pod health states
+	podHealthMap := make(map[string]*PodHealthStatus)
+
+	// Initial health check on all pods
+	podList, err := cs.K8sClient.ClientSet.CoreV1().Pods(ns).List(c, listOpts)
+	if err == nil {
+		for i := range podList.Items {
+			pod := &podList.Items[i]
+			key := pod.Namespace + "/" + pod.Name
+
+			// Acquire semaphore permit (max 3 concurrent)
+			if err := h.healthCheckSem.Acquire(c.Request.Context(), 1); err != nil {
+				klog.Warningf("Failed to acquire semaphore for initial check of %s: %v", key, err)
+				continue
+			}
+
+			// SYNCHRONOUS execution - tunnel closes BEFORE we acquire next permit
+			health := h.checkPodHealth(c, pod, healthEndpoint)
+			podHealthMap[key] = health
+
+			h.healthCheckSem.Release(1)
+		}
+
+		_ = writeSSE(c, "snapshot", podHealthMap)
+	}
+
+	// Keep-alive and periodic health check
+	ticker := time.NewTicker(15 * time.Second)
+	defer ticker.Stop()
+
+	flusher, _ := c.Writer.(http.Flusher)
+
+	for {
+		select {
+		case <-c.Request.Context().Done():
+			_ = writeSSE(c, "close", gin.H{"message": "connection closed"})
+			return
+
+		case <-ticker.C:
+			// Periodic health check on all pods
+			podList, err := cs.K8sClient.ClientSet.CoreV1().Pods(ns).List(c, listOpts)
+			if err != nil {
+				klog.Warningf("Failed to list pods for health check: %v", err)
+				continue
+			}
+
+			for i := range podList.Items {
+				pod := &podList.Items[i]
+				key := pod.Namespace + "/" + pod.Name
+
+				// Acquire semaphore permit (max 3 concurrent)
+				if err := h.healthCheckSem.Acquire(c.Request.Context(), 1); err != nil {
+					klog.Warningf("Failed to acquire semaphore for pod %s: %v", key, err)
+					continue
+				}
+
+				// SYNCHRONOUS execution - tunnel closes BEFORE we acquire next permit
+				newHealth := h.checkPodHealth(c, pod, healthEndpoint)
+
+				// Only send update if state changed
+				if oldHealth, exists := podHealthMap[key]; !exists || hasHealthChanged(oldHealth, newHealth) {
+					podHealthMap[key] = newHealth
+					_ = writeSSE(c, "updated", newHealth)
+				}
+
+				h.healthCheckSem.Release(1)
+			}
+
+			_, _ = fmt.Fprintf(c.Writer, ": ping\n\n")
+			flusher.Flush()
+
+		case event, ok := <-watchInterface.ResultChan():
+			if !ok {
+				_ = writeSSE(c, "close", gin.H{"message": "watch channel closed"})
+				return
+			}
+
+			pod, ok := event.Object.(*corev1.Pod)
+			if !ok || pod == nil {
+				continue
+			}
+
+			key := pod.Namespace + "/" + pod.Name
+
+			switch event.Type {
+			case watch.Added:
+				// Acquire semaphore permit
+				if err := h.healthCheckSem.Acquire(c.Request.Context(), 1); err != nil {
+					klog.Warningf("Failed to acquire semaphore for added pod %s: %v", key, err)
+					continue
+				}
+
+				// SYNCHRONOUS execution - tunnel closes immediately after health check
+				health := h.checkPodHealth(c, pod, healthEndpoint)
+				podHealthMap[key] = health
+				_ = writeSSE(c, "updated", health)
+
+				h.healthCheckSem.Release(1)
+
+			case watch.Modified:
+				// Acquire semaphore permit
+				if err := h.healthCheckSem.Acquire(c.Request.Context(), 1); err != nil {
+					klog.Warningf("Failed to acquire semaphore for modified pod %s: %v", key, err)
+					continue
+				}
+
+				// SYNCHRONOUS execution
+				health := h.checkPodHealth(c, pod, healthEndpoint)
+				if oldHealth, exists := podHealthMap[key]; !exists || hasHealthChanged(oldHealth, health) {
+					podHealthMap[key] = health
+					_ = writeSSE(c, "updated", health)
+				}
+
+				h.healthCheckSem.Release(1)
+
+			case watch.Deleted:
+				if _, exists := podHealthMap[key]; exists {
+					delete(podHealthMap, key)
+					_ = writeSSE(c, "removed", gin.H{
+						"podName":   pod.Name,
+						"namespace": pod.Namespace,
+					})
+				}
+			}
+		}
+	}
+}
+
+// parseHealthEndpoint extracts port and path from endpoint specifications
+// Examples: "8808/readyz" → port="8808", path="/readyz"
+func parseHealthEndpoint(endpoint string) (port string, pathStr string) {
+	ep := strings.TrimSpace(endpoint)
+	if ep == "" {
+		return defaultHealthCheckPort, "/readyz"
+	}
+
+	if strings.HasPrefix(ep, "/") {
+		return "", ep
+	}
+
+	var hostport, rest string
+	if idx := strings.Index(ep, "/"); idx >= 0 {
+		hostport = ep[:idx]
+		rest = ep[idx:]
+	} else {
+		hostport = ep
+		rest = "/"
+	}
+
+	if strings.Contains(hostport, ":") {
+		parts := strings.Split(hostport, ":")
+		port = parts[len(parts)-1]
+	} else {
+		port = hostport
+	}
+
+	return port, rest
+}
+
+// applyHealthRespToStatus extracts health information from HealthCheckResponse
+func (h *PodHandler) applyHealthRespToStatus(pod *corev1.Pod, healthResp *HealthCheckResponse, status *PodHealthStatus) {
+	podName := pod.Name
+
+	// Try to find pod FQDN in health response
+	podFQDN := podName
+	if len(podName) > 2 {
+		podFQDN = podName + "." + podName[:len(podName)-2] + "-svc"
+	}
+
+	// Look up node health info in the response
+	if nodeCheck, ok := healthResp.NodesHealthCheck[podFQDN]; ok {
+		status.State = nodeCheck.NodeStatus.State
+		status.CommittedIndex = nodeCheck.NodeStatus.CommittedIndex
+		status.QueuedWrites = nodeCheck.NodeStatus.QueuedWrites
+		status.Healthy = nodeCheck.NodeHealth.Ok
+	}
+
+	if !healthResp.ClusterHealth {
+		status.Error = "Cluster unhealthy"
+	}
+}
+
+// checkPodHealth probes a pod's health endpoint using the specified strategy
+// Auto-detection logic:
+//   - If healthStrategy is explicit, use that strategy
+//   - If healthStrategy is not passed:
+//   - In-cluster: try direct, fallback to portforward → proxy
+//   - Out-of-cluster: try portforward, fallback to proxy
+func (h *PodHandler) checkPodHealth(c *gin.Context, pod *corev1.Pod, endpoint string) *PodHealthStatus {
+	strategyParam := c.Query("healthStrategy")
+
+	// If explicit strategy provided, use it
+	if strategyParam != "" {
+		return h.checkPodHealthWithStrategy(c, pod, endpoint, strings.ToLower(strategyParam))
+	}
+
+	// Auto-detect strategy based on whether we're in-cluster
+	if h.inCluster {
+		// In-cluster: try direct first (fastest), fallback to portforward, then proxy
+		result := h.checkPodHealthWithStrategy(c, pod, endpoint, "direct")
+		if result.Error == "" {
+			return result
+		}
+		klog.V(3).Infof("Direct strategy failed for %s/%s, trying portforward", pod.Namespace, pod.Name)
+
+		result = h.checkPodHealthWithStrategy(c, pod, endpoint, "portforward")
+		if result.Error == "" {
+			return result
+		}
+		klog.V(3).Infof("Portforward strategy failed for %s/%s, trying proxy", pod.Namespace, pod.Name)
+
+		return h.checkPodHealthWithStrategy(c, pod, endpoint, "proxy")
+	} else {
+		// Out-of-cluster: try proxy first, fallback to portforward (works everywhere)
+		result := h.checkPodHealthWithStrategy(c, pod, endpoint, "proxy")
+		if result.Error == "" {
+			return result
+		}
+		klog.V(3).Infof("proxy strategy failed for %s/%s, trying portforward", pod.Namespace, pod.Name)
+
+		return h.checkPodHealthWithStrategy(c, pod, endpoint, "portforward")
+	}
+}
+
+// checkPodHealthWithStrategy performs health check with a specific strategy
+func (h *PodHandler) checkPodHealthWithStrategy(c *gin.Context, pod *corev1.Pod, endpoint string, strategy string) *PodHealthStatus {
+	strategy = strings.ToLower(strategy)
+
+	switch strategy {
+	case "direct":
+		return h.checkPodHealthDirect(c, pod, endpoint)
+	case "portforward":
+		return h.checkPodHealthViaPortForward(c, pod, endpoint)
+	case "proxy":
+		fallthrough
+	default:
+		return h.checkPodHealthViaProxy(c, pod, endpoint)
+	}
+}
+
+func (h *PodHandler) getEmptyPodHealthStatus(pod *corev1.Pod) *PodHealthStatus {
+	status := &PodHealthStatus{
+		PodName:   pod.Name,
+		Namespace: pod.Namespace,
+		Timestamp: time.Now(),
+		State:     "UNKNOWN",
+		Healthy:   false,
+	}
+
+	return status
+}
+
+// checkPodHealthDirect calls the pod IP directly (original behavior)
+func (h *PodHandler) checkPodHealthDirect(c *gin.Context, pod *corev1.Pod, endpoint string) *PodHealthStatus {
+	status := h.getEmptyPodHealthStatus(pod)
+
+	if pod.Status.PodIP == "" {
+		status.Error = "Pod IP not assigned"
+		return status
+	}
+
+	port, pathStr := parseHealthEndpoint(endpoint)
+	if port == "" {
+		port = defaultHealthCheckPort
+	}
+	if !strings.HasPrefix(pathStr, "/") {
+		pathStr = "/" + pathStr
+	}
+
+	url := fmt.Sprintf("http://%s:%s%s", pod.Status.PodIP, port, pathStr)
+
+	httpClient := &http.Client{Timeout: 5 * time.Second}
+	resp, err := httpClient.Get(url)
+	if err != nil {
+		status.Error = fmt.Sprintf("Health check failed: %v", err)
+		return status
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		status.Error = fmt.Sprintf("HTTP %d", resp.StatusCode)
+		return status
+	}
+
+	var healthResp HealthCheckResponse
+	if err := json.NewDecoder(resp.Body).Decode(&healthResp); err != nil {
+		status.Error = fmt.Sprintf("Failed to parse response: %v", err)
+		return status
+	}
+
+	h.applyHealthRespToStatus(pod, &healthResp, status)
+	return status
+}
+
+// checkPodHealthViaProxy calls the pod health endpoint through the kube-apiserver proxy
+func (h *PodHandler) checkPodHealthViaProxy(c *gin.Context, pod *corev1.Pod, endpoint string) *PodHealthStatus {
+	status := h.getEmptyPodHealthStatus(pod)
+
+	cs := c.MustGet("cluster").(*cluster.ClientSet)
+
+	port, pathStr := parseHealthEndpoint(endpoint)
+	if port == "" {
+		port = defaultHealthCheckPort
+	}
+	if !strings.HasPrefix(pathStr, "/") {
+		pathStr = "/" + pathStr
+	}
+
+	nameWithPort := pod.Name
+	if port != "" {
+		nameWithPort = fmt.Sprintf("%s:%s", pod.Name, port)
+	}
+
+	klog.V(3).Infof("Health check via proxy: %s/%s:%s%s",
+		pod.Namespace, pod.Name, port, pathStr)
+
+	req := cs.K8sClient.ClientSet.CoreV1().RESTClient().
+		Get().
+		Namespace(pod.Namespace).
+		Resource("pods").
+		Name(nameWithPort).
+		SubResource("proxy").
+		Suffix(strings.TrimPrefix(pathStr, "/"))
+
+	ctx := c.Request.Context()
+	result := req.Do(ctx)
+	if result.Error() != nil {
+		status.Error = fmt.Sprintf("proxy request failed: %v", result.Error())
+		klog.Warningf("Health check proxy failed for %s/%s: %v",
+			pod.Namespace, pod.Name, result.Error())
+		return status
+	}
+
+	body, err := result.Raw()
+	if err != nil {
+		status.Error = fmt.Sprintf("failed to read proxy response: %v", err)
+		return status
+	}
+
+	var healthResp HealthCheckResponse
+	if err := json.Unmarshal(body, &healthResp); err != nil {
+		status.Error = fmt.Sprintf("Failed to parse response: %v", err)
+		return status
+	}
+
+	h.applyHealthRespToStatus(pod, &healthResp, status)
+
+	klog.V(2).Infof("Health check passed (proxy) for %s/%s: state=%s healthy=%v",
+		pod.Namespace, pod.Name, status.State, status.Healthy)
+
+	return status
+}
+
+// checkPodHealthViaPortForward uses the PortForwardSession to tunnel to the pod
+func (h *PodHandler) checkPodHealthViaPortForward(c *gin.Context, pod *corev1.Pod, endpoint string) *PodHealthStatus {
+	status := h.getEmptyPodHealthStatus(pod)
+
+	cs := c.MustGet("cluster").(*cluster.ClientSet)
+
+	cfg := cs.K8sClient.Configuration
+	if cfg == nil {
+		status.Error = "rest.Config not available"
+		return status
+	}
+
+	port, pathStr := parseHealthEndpoint(endpoint)
+	if port == "" {
+		port = defaultHealthCheckPort
+	}
+	if !strings.HasPrefix(pathStr, "/") {
+		pathStr = "/" + pathStr
+	}
+
+	outBuf := &strings.Builder{}
+	errBuf := &strings.Builder{}
+
+	session := kube.NewPortForwardSession(
+		cfg,
+		pod.Namespace,
+		pod.Name,
+		port,
+		outBuf,
+		errBuf,
+	)
+	defer session.Close()
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 15*time.Second)
+	defer cancel()
+
+	klog.V(3).Infof("Starting port-forward health check for %s/%s:%s",
+		pod.Namespace, pod.Name, port)
+
+	if err := session.Start(ctx); err != nil {
+		status.Error = fmt.Sprintf("port-forward failed: %v", err)
+		if errBuf.Len() > 0 {
+			status.Error += fmt.Sprintf(" (details: %s)", errBuf.String())
+		}
+		klog.Warningf("Health check port-forward failed for %s/%s: %v",
+			pod.Namespace, pod.Name, err)
+		return status
+	}
+
+	url := fmt.Sprintf("http://%s%s", session.LocalAddr(), pathStr)
+	httpClient := &http.Client{Timeout: 5 * time.Second}
+
+	klog.V(3).Infof("Calling health endpoint through tunnel: %s", url)
+
+	resp, err := httpClient.Get(url)
+	if err != nil {
+		status.Error = fmt.Sprintf("health check request failed: %v", err)
+		klog.Warningf("Health check request failed for %s/%s: %v",
+			pod.Namespace, pod.Name, err)
+		return status
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		status.Error = fmt.Sprintf("HTTP %d", resp.StatusCode)
+		klog.Warningf("Health check returned non-200 for %s/%s: %d",
+			pod.Namespace, pod.Name, resp.StatusCode)
+		return status
+	}
+
+	var healthResp HealthCheckResponse
+	if err := json.NewDecoder(resp.Body).Decode(&healthResp); err != nil {
+		status.Error = fmt.Sprintf("failed to parse response: %v", err)
+		klog.Warningf("Failed to parse health response for %s/%s: %v",
+			pod.Namespace, pod.Name, err)
+		return status
+	}
+
+	h.applyHealthRespToStatus(pod, &healthResp, status)
+
+	klog.V(2).Infof("Health check passed (port-forward) for %s/%s: state=%s healthy=%v",
+		pod.Namespace, pod.Name, status.State, status.Healthy)
+
+	return status
+}
+
+func hasHealthChanged(old, new *PodHealthStatus) bool {
+	return old.State != new.State ||
+		old.Healthy != new.Healthy ||
+		old.Error != new.Error
 }
