@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { IconLoader, IconRefresh, IconTrash } from '@tabler/icons-react'
+import { IconLoader, IconRefresh, IconTrash, IconExternalLink } from '@tabler/icons-react'
 import * as yaml from 'js-yaml'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
@@ -133,8 +133,9 @@ export function IngressDetail<T extends ResourceType>(props: {
                     Host
                   </Label>
                   <p className="text-sm hover:underline text-blue-600">
-                    <Link to={`https://${data.spec?.rules[0].host}`} target="_blank">
+                    <Link to={`https://${data.spec?.rules[0].host}`} target="_blank" className="inline-flex items-center gap-1">
                       {data.spec?.rules[0].host || ''}
+                      <IconExternalLink className="w-3 h-3 inline text-blue-600" />
                     </Link>
                   </p>
                 </div>
