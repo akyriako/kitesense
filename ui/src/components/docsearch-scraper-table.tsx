@@ -62,7 +62,7 @@ import { ConnectionIndicator } from './connection-indicator'
 import { ErrorMessage } from './error-message'
 import { NamespaceSelector } from './selector/namespace-selector'
 
-export interface ResourceTableProps<T> {
+export interface DocSearchScraperTableProps<T> {
   resourceName: string
   resourceType?: ResourceType // Optional, used for fetching resources
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -75,7 +75,7 @@ export interface ResourceTableProps<T> {
   labelSelector?: string
 }
 
-export function ResourceTable<T>({
+export function DocSearchScraperTable<T>({
   resourceName,
   resourceType,
   columns,
@@ -85,7 +85,7 @@ export function ResourceTable<T>({
   onCreateClick,
   extraToolbars = [],
   labelSelector,
-}: ResourceTableProps<T>) {
+}: DocSearchScraperTableProps<T>) {
   const { t } = useTranslation()
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
@@ -428,14 +428,14 @@ export function ResourceTable<T>({
             <Box className="h-12 w-12 text-muted-foreground" />
           </div>
           <h3 className="text-lg font-medium mb-1">
-            No {resourceName.toLowerCase()} found
+            No scraper found
           </h3>
           <p className="text-muted-foreground">
             {searchQuery
               ? `No results match your search query: "${searchQuery}"`
               : clusterScope
-                ? `There are no ${resourceName.toLowerCase()} found`
-                : `There are no ${resourceName.toLowerCase()} in the ${selectedNamespace} namespace`}
+                ? `There are no scrapers found`
+                : `There are no scrapers in the ${selectedNamespace} namespace`}
           </p>
           {searchQuery && (
             <Button
@@ -490,173 +490,6 @@ export function ResourceTable<T>({
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold capitalize">{resourceName}</h1>
-          {!clusterScope &&
-            selectedNamespace &&
-            selectedNamespace !== '_all' && (
-              <div className="text-muted-foreground flex items-center mt-1">
-                <span>Namespace:</span>
-                <Badge variant="outline" className="ml-2 ">
-                  {selectedNamespace}
-                </Badge>
-              </div>
-            )}
-        </div>
-
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-          <div className="flex items-center gap-2 flex-wrap">
-            {extraToolbars?.map((toolbar, index) => (
-              <React.Fragment key={index}>{toolbar}</React.Fragment>
-            ))}
-            {/* Watch/Live mode toggle switch */}
-            {resourceName === 'Pods' && (
-              <div className="flex items-center gap-2">
-                <Label className="text-sm">
-                  {useSSE ? (
-                    <ConnectionIndicator isConnected={isConnected}>
-                      {t('resourceTable.watch')}
-                    </ConnectionIndicator>
-                  ) : (
-                    t('resourceTable.watch')
-                  )}
-                </Label>
-                <Switch
-                  checked={useSSE}
-                  onCheckedChange={(checked) => {
-                    setUseSSE(checked)
-                    if (checked) {
-                      setRefreshInterval(0)
-                    } else if (refreshInterval === 0) {
-                      setRefreshInterval(5000) // Default to 5s when disabling watch mode
-                    }
-                  }}
-                />
-              </div>
-            )}
-            {/* Refresh interval selector */}
-            <Select
-              value={refreshInterval.toString()}
-              onValueChange={(value) => {
-                setRefreshInterval(Number(value))
-                if (Number(value) > 0) {
-                  setUseSSE(false)
-                }
-              }}
-              disabled={useSSE}
-            >
-              <SelectTrigger className="max-w-[140px]">
-                <div className="flex items-center gap-2">
-                  <RefreshCw className="h-4 w-4" />
-                  <SelectValue />
-                </div>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="0">Off</SelectItem>
-                <SelectItem value="1000">1s</SelectItem>
-                <SelectItem value="5000">5s</SelectItem>
-                <SelectItem value="10000">10s</SelectItem>
-                <SelectItem value="30000">30s</SelectItem>
-              </SelectContent>
-            </Select>
-            {!clusterScope && (
-              <NamespaceSelector
-                selectedNamespace={selectedNamespace}
-                handleNamespaceChange={handleNamespaceChange}
-                showAll={true}
-              />
-            )}
-            {/* Column Filters */}
-            {table
-              .getAllColumns()
-              .filter((column) => {
-                const columnDef = column.columnDef as ColumnDef<T> & {
-                  enableColumnFilter?: boolean
-                }
-                return columnDef.enableColumnFilter && column.getCanFilter()
-              })
-              .map((column) => {
-                const columnDef = column.columnDef as ColumnDef<T> & {
-                  enableColumnFilter?: boolean
-                }
-                const uniqueValues = column.getFacetedUniqueValues()
-                const filterValue = column.getFilterValue() as string
-
-                return (
-                  <Select
-                    key={column.id}
-                    value={filterValue || ''}
-                    onValueChange={(value) =>
-                      column.setFilterValue(value === 'all' ? '' : value)
-                    }
-                  >
-                    <SelectTrigger className="min-w-32">
-                      <SelectValue
-                        placeholder={`Filter ${typeof columnDef.header === 'string' ? columnDef.header : 'Column'}`}
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">
-                        All{' '}
-                        {typeof columnDef.header === 'string'
-                          ? columnDef.header
-                          : 'Values'}
-                      </SelectItem>
-                      {Array.from(uniqueValues.keys())
-                        .sort()
-                        .map((value) => (
-                          <SelectItem key={String(value)} value={String(value)}>
-                            {String(value)} ({uniqueValues.get(value)})
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                )
-              })}
-          </div>
-
-          {/* Search bar */}
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <div className="relative w-full sm:w-auto">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder={`Search ${resourceName.toLowerCase()}...`}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 pr-4 w-full sm:w-[100px] md:w-[200px]"
-              />
-            </div>
-            {searchQuery && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setSearchQuery('')}
-                className="h-9 w-9"
-              >
-                <XCircle className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
-          {/* Batch delete button */}
-          {table.getSelectedRowModel().rows.length > 0 && (
-            <Button
-              variant="destructive"
-              onClick={() => setDeleteDialogOpen(true)}
-              className="gap-2"
-            >
-              <Trash2 className="h-4 w-4" />
-              {t('resourceTable.deleteSelected', {
-                count: table.getSelectedRowModel().rows.length,
-              })}
-            </Button>
-          )}
-          {showCreateButton && onCreateClick && (
-            <Button onClick={onCreateClick} className="gap-1">
-              <Plus className="h-2 w-2" />
-              New
-            </Button>
-          )}
-        </div>
       </div>
 
       {/* Table card */}
