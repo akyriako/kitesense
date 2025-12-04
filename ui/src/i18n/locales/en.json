@@ -191,8 +191,8 @@
   },
   "login": {
     "title": "Sign In",
-    "subtitle": "Access your Typesense dashboard",
-    "kubernetesDashboard": "Typesense Dashboard",
+    "subtitle": "Your Typesense clusters, anywhere, anytime.",
+    "kubernetesDashboard": "Your Typesense clusters, anywhere, anytime.",
     "signIn": "Sign In",
     "username": "Username",
     "password": "Password",
@@ -395,7 +395,7 @@
   },
   "initialization": {
     "title": "Initial Setup",
-    "welcome": "Welcome! Let's set up your Typesense dashboard",
+    "welcome": "Welcome! Let's set up your Typesense Dashboard",
     "subtitle": "Complete the following steps to get started",
     "description": "Configure your admin user and connect cluster",
     "step1": {

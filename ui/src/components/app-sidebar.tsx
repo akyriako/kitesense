@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { useMemo } from 'react'
-import Icon from '@/assets/icon.svg'
+import Icon from '@/assets/tyko-logo.png'
 import { useSidebarConfig } from '@/contexts/sidebar-config-context'
 import { CollapsibleContent } from '@radix-ui/react-collapsible'
 import { IconLayoutDashboard } from '@tabler/icons-react'
@@ -82,7 +82,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarMenuItem>
               <SidebarMenuButton asChild>
                 <Link to="/" onClick={handleMenuItemClick}>
-                  {/* <img src={Icon} alt="Kite Logo" className="ml-1 h-8 w-8" /> */}
+                  <img src={Icon} alt="Kitesense Logo" className="ml-1 h-8 w-8" />
                   <span className="text-base font-semibold">Kitesense</span>
                 </Link>
               </SidebarMenuButton>
@@ -110,7 +110,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <Link to="/" onClick={handleMenuItemClick}>
                 <div className="relative flex items-center justify-between w-full">
                   <div className="flex items-center gap-2">
-                    {/* <img src={Icon} alt="Kite Logo" className="h-8 w-8" /> */}
+                    <img src={Icon} alt="Kitesense Logo" className="h-9 w-8" />
                     <div className="flex flex-col">
                       <span className="text-base font-semibold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
                         Kitesense
