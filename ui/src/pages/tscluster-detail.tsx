@@ -942,6 +942,18 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
                             />
                         ),
                     },
+                    {
+                        value: 'monitor',
+                        label: 'Monitor',
+                        content: (
+                            <ResourceHistoryTable
+                                resourceType={resourceType}
+                                name={name}
+                                namespace={namespace}
+                                currentResource={data}
+                            />
+                        ),
+                    },
                 ]}
             />
 
