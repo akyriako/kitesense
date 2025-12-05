@@ -191,7 +191,7 @@ export function SecretDetail(props: { name: string; namespace?: string, isNested
                     {secret.metadata!.resourceVersion}
                   </p>
                 </div>
-                {isOwnedBy && owner && (
+                {((isOwnedBy && owner) && !isNested) && (
                   <div>
                     <Label className="text-xs text-muted-foreground">
                       Owner

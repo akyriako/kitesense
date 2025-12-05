@@ -24,6 +24,11 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { SimpleYamlEditor } from '@/components/simple-yaml-editor'
+import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip'
+import {
+  IconInfoCircleFilled,
+} from '@tabler/icons-react'
+import { Link } from 'react-router-dom'
 
 interface CreateResourceDialogProps {
   open: boolean
@@ -85,9 +90,24 @@ export function CreateResourceDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="!max-w-4xl sm:!max-w-4xl max-h-[80vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>Create Resource</DialogTitle>
+          <DialogTitle>
+            Create new Typesense Cluster
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>
+                  <IconInfoCircleFilled className="inline-block ml-2 w-4 h-4" />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>
+                  More information about <code>TypesenseCluster</code> CRD <br/> can be found in the <Link to='https://akyriako.github.io/typesense-operator-docs/docs/crds/' className='hover:underline'>official TyKO documentation</Link>.
+                </p>
+
+              </TooltipContent>
+            </Tooltip>
+          </DialogTitle>
           <DialogDescription>
-            Paste any Kubernetes resource YAML configuration and apply it to the
+            Paste a <code>TypesenseCluster</code> Kubernetes resource YAML manifest and apply it to the
             cluster
           </DialogDescription>
         </DialogHeader>
