@@ -476,28 +476,28 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
                                                         </div>
                                                     ) : (
                                                         <div className="space-y-2">
-                                                                <div>
-                                                                    {/* <div className="text-xs font-medium text-green-600 dark:text-green-400">
+                                                            <div>
+                                                                {/* <div className="text-xs font-medium text-green-600 dark:text-green-400">
                                                                         Requests
                                                                     </div> */}
-                                                                    <div className="text-sm space-y-1">
-                                                                            <div className="flex gap-2">
-                                                                                <span className="text-muted-foreground">
-                                                                                    CPU:
-                                                                                </span>
-                                                                                <span>100m</span>
-                                                                            </div>
-                                                                            <div className="flex gap-2">
-                                                                                <span className="text-muted-foreground">
-                                                                                    Memory:
-                                                                                </span>
-                                                                                <span>
-                                                                                    256Mi
-                                                                                </span>
-                                                                            </div>
+                                                                <div className="text-sm space-y-1">
+                                                                    <div className="flex gap-2">
+                                                                        <span className="text-muted-foreground">
+                                                                            CPU:
+                                                                        </span>
+                                                                        <span>100m</span>
+                                                                    </div>
+                                                                    <div className="flex gap-2">
+                                                                        <span className="text-muted-foreground">
+                                                                            Memory:
+                                                                        </span>
+                                                                        <span>
+                                                                            256Mi
+                                                                        </span>
                                                                     </div>
                                                                 </div>
-                                        
+                                                            </div>
+
                                                         </div>
                                                     )}
                                                 </div>
@@ -567,28 +567,28 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
                                                         </div>
                                                     ) : (
                                                         <div className="space-y-2">
-                                                                <div>
-                                                                    {/* <div className="text-xs font-medium text-green-600 dark:text-green-400">
+                                                            <div>
+                                                                {/* <div className="text-xs font-medium text-green-600 dark:text-green-400">
                                                                         Requests
                                                                     </div> */}
-                                                                    <div className="text-sm space-y-1">
-                                                                            <div className="flex gap-2">
-                                                                                <span className="text-muted-foreground">
-                                                                                    CPU:
-                                                                                </span>
-                                                                                <span>1</span>
-                                                                            </div>
-                                                                            <div className="flex gap-2">
-                                                                                <span className="text-muted-foreground">
-                                                                                    Memory:
-                                                                                </span>
-                                                                                <span>
-                                                                                    512Mi
-                                                                                </span>
-                                                                            </div>
+                                                                <div className="text-sm space-y-1">
+                                                                    <div className="flex gap-2">
+                                                                        <span className="text-muted-foreground">
+                                                                            CPU:
+                                                                        </span>
+                                                                        <span>1</span>
+                                                                    </div>
+                                                                    <div className="flex gap-2">
+                                                                        <span className="text-muted-foreground">
+                                                                            Memory:
+                                                                        </span>
+                                                                        <span>
+                                                                            512Mi
+                                                                        </span>
                                                                     </div>
                                                                 </div>
-                                        
+                                                            </div>
+
                                                         </div>
                                                     )}
                                                 </div>
@@ -732,7 +732,7 @@ export function TypesenseClusterDetail<T extends ResourceType>(props: {
                                     </CardHeader>
                                     <CardContent>
                                         <SecretDetail
-                                            name={data?.spec?.adminApiKey?.name}
+                                            name={data?.spec?.adminApiKey?.name ?? `${data?.metadata?.name}-admin-key`}
                                             namespace={namespace}
                                             isNested={true}
                                             isReadOnly={true}

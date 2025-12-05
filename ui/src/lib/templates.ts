@@ -8,278 +8,213 @@ export interface ResourceTemplate {
 
 export const resourceTemplates: ResourceTemplate[] = [
   {
-    name: 'Pod',
-    description: 'A basic Pod with a single container',
-    yaml: `apiVersion: v1
-kind: Pod
+    name: 'KiND',
+    description: 'A basic 3-node cluster on KiND',
+    yaml: `apiVersion: storage.k8s.io/v1
+kind: StorageClass
 metadata:
-  name: example-pod
-  namespace: default
-  labels:
-    app: example
-spec:
-  containers:
-  - name: nginx
-    image: nginx:1.21
-    ports:
-    - containerPort: 80
-    resources:
-      requests:
-        memory: "64Mi"
-        cpu: "250m"
-      limits:
-        memory: "128Mi"
-        cpu: "500m"`,
-  },
-  {
-    name: 'Deployment',
-    description: 'A Deployment with 3 replicas',
-    yaml: `apiVersion: apps/v1
-kind: Deployment
+  name: typesense-local-path
+provisioner: rancher.io/local-path
+reclaimPolicy: Delete
+allowVolumeExpansion: true
+volumeBindingMode: WaitForFirstConsumer
+---
+apiVersion: ts.opentelekomcloud.com/v1alpha1
+kind: TypesenseCluster
 metadata:
-  name: example-deployment
+  name: kind-basic
   namespace: default
-  labels:
-    app: example
 spec:
+  image: typesense/typesense:30.0.rc27-amd64
   replicas: 3
-  selector:
-    matchLabels:
-      app: example
-  template:
-    metadata:
-      labels:
-        app: example
-    spec:
-      containers:
-      - name: nginx
-        image: nginx:1.21
-        ports:
-        - containerPort: 80
-        resources:
-          requests:
-            memory: "64Mi"
-            cpu: "250m"
-          limits:
-            memory: "128Mi"
-            cpu: "500m"`,
+  storage:
+    size: 50Mi
+    storageClassName: typesense-local-path
+    `,
   },
   {
-    name: 'StatefulSet',
-    description: 'A StatefulSet with persistent storage',
-    yaml: `apiVersion: apps/v1
-kind: StatefulSet
+    name: 'Open Telekom Cloud',
+    description: 'A basic 3-node cluster on Open Telekom Cloud',
+    yaml: `apiVersion: ts.opentelekomcloud.com/v1alpha1
+kind: TypesenseCluster
 metadata:
-  name: example-statefulset
+  name: otc-basic
   namespace: default
 spec:
-  serviceName: "example-service"
+  image: typesense/typesense:30.0.rc27-amd64
   replicas: 3
-  selector:
-    matchLabels:
-      app: example
-  template:
-    metadata:
-      labels:
-        app: example
-    spec:
-      containers:
-      - name: nginx
-        image: nginx:1.21
-        ports:
-        - containerPort: 80
-        volumeMounts:
-        - name: www
-          mountPath: /usr/share/nginx/html
-        resources:
-          requests:
-            memory: "64Mi"
-            cpu: "250m"
-          limits:
-            memory: "128Mi"
-            cpu: "500m"
-  volumeClaimTemplates:
-  - metadata:
-      name: www
-    spec:
-      accessModes: [ "ReadWriteOnce" ]
-      resources:
-        requests:
-          storage: 1Gi`,
+  storage:
+    size: 50Mi
+    storageClassName: csi-disk
+    `,
   },
   {
-    name: 'Job',
-    description: 'A Job that runs a task to completion',
-    yaml: `apiVersion: batch/v1
-kind: Job
+    name: 'AWS',
+    description: 'A basic 3-node cluster on AWS',
+    yaml: `apiVersion: ts.opentelekomcloud.com/v1alpha1
+kind: TypesenseCluster
 metadata:
-  name: example-job
+  name: aws-basic
   namespace: default
 spec:
-  template:
-    spec:
-      containers:
-      - name: busybox
-        image: busybox:1.35
-        command: ['sh', '-c']
-        args:
-        - |
-          echo "Starting job..."
-          sleep 30
-          echo "Job completed successfully!"
-        resources:
-          requests:
-            memory: "32Mi"
-            cpu: "100m"
-          limits:
-            memory: "64Mi"
-            cpu: "200m"
-      restartPolicy: Never
-  backoffLimit: 4`,
-  },
-  {
-    name: 'CronJob',
-    description: 'A CronJob that runs on a schedule',
-    yaml: `apiVersion: batch/v1
-kind: CronJob
+  image: typesense/typesense:30.0.rc27-amd64
+  replicas: 3
+  storage:
+    size: 50Mi
+    storageClassName: gp2
+    `,
+  }, {
+    name: 'Azure',
+    description: 'A basic 3-node cluster on Azure',
+    yaml: `apiVersion: ts.opentelekomcloud.com/v1alpha1
+kind: TypesenseCluster
 metadata:
-  name: example-cronjob
+  name: azure-basic
   namespace: default
 spec:
-  schedule: "0 2 * * *"  # Run daily at 2 AM
-  jobTemplate:
-    spec:
-      template:
-        spec:
-          containers:
-          - name: busybox
-            image: busybox:1.35
-            command: ['sh', '-c']
-            args:
-            - |
-              echo "Running scheduled task..."
-              date
-              echo "Task completed!"
-            resources:
-              requests:
-                memory: "32Mi"
-                cpu: "100m"
-              limits:
-                memory: "64Mi"
-                cpu: "200m"
-          restartPolicy: OnFailure`,
+  image: typesense/typesense:30.0.rc27-amd64
+  replicas: 3
+  storage:
+    size: 50Mi
+    storageClassName: managed-csi
+    `,
   },
   {
-    name: 'Service',
-    description: 'A Service to expose applications',
-    yaml: `apiVersion: v1
-kind: Service
+    name: 'GCP',
+    description: 'A basic 3-node cluster on GCP',
+    yaml: `apiVersion: ts.opentelekomcloud.com/v1alpha1
+kind: TypesenseCluster
 metadata:
-  name: example-service
+  name: gcp-basic
   namespace: default
-  labels:
-    app: example
 spec:
-  selector:
-    app: example
-  ports:
-  - name: http
-    port: 80
-    targetPort: 80
-    protocol: TCP
-  type: ClusterIP`,
+  image: typesense/typesense:30.0.rc27-amd64
+  replicas: 3
+  storage:
+    size: 50Mi
+    storageClassName: standard-rwo
+    `,
   },
   {
-    name: 'ConfigMap',
-    description: 'A ConfigMap to store configuration data',
-    yaml: `apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: example-configmap
-  namespace: default
-data:
-  database_url: "postgresql://localhost:5432/mydb"
-  debug: "true"
-  max_connections: "100"
-  config.yaml: |
-    server:
-      port: 8080
-      host: 0.0.0.0
-    logging:
-      level: info`,
-  },
-  {
-    name: 'Secret',
-    description: 'A Secret to store sensitive data',
+    name: 'BYOK',
+    description: 'Explicitely define Admin API Key',
     yaml: `apiVersion: v1
 kind: Secret
 metadata:
-  name: example-secret
+  name: typesense-common-bootstrap-key
   namespace: default
 type: Opaque
 data:
-  username: YWRtaW4=  # base64 encoded "admin"
-  password: MWYyZDFlMmU2N2Rm  # base64 encoded "1f2d1e2e67df"
-stringData:
-  database-url: "postgresql://user:pass@localhost:5432/mydb"`,
-  },
-  {
-    name: 'Daemonset',
-    description: 'A DaemonSet to run pods on all nodes',
-    yaml: `apiVersion: apps/v1
-kind: DaemonSet
+  typesense-api-key: SXdpVG9CcnFYTHZYeTJNMG1TS1hPaGt0dlFUY3VWUloxc1M5REtsRUNtMFFwQU93R1hoanVIVWJLQnE2ejdlSQ==
+---
+apiVersion: ts.opentelekomcloud.com/v1alpha1
+kind: TypesenseCluster
 metadata:
-  name: example-daemonset
+  name: byok
+  namespace: default
 spec:
-  selector:
-    matchLabels:
-      app: example
-  template:
-    metadata:
-      labels:
-        app: example
-    spec:
-      containers:
-        - name: busybox
-          image: busybox:1.35
-          args:
-            - /bin/sh
-            - -c
-            - 'while true; do echo alive; sleep 60; done'
-`,
+  image: typesense/typesense:30.0.rc27-amd64
+  adminApiKey:
+    name: typesense-common-bootstrap-key
+  replicas: 3
+  storage:
+    size: 50Mi
+    storageClassName: standard,
+    `,
   },
-  {
-    name: 'Ingress',
-    description: 'An Ingress to route external traffic',
-    yaml: `apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: example-ingress
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
-spec:
-  ingressClassName: nginx
-  rules:
-    - http:
-        paths:
-          - path: /api
-            pathType: Prefix
-            backend:
-              service:
-                name: example-service
-                port:
-                  number: 80
-`,
-  },
-  {
-    name: 'Namespace',
-    description: 'A Namespace for resource isolation',
+   {
+    name: 'with Configuration',
+    description: 'Add Server Configuration as ENV variables',
     yaml: `apiVersion: v1
-kind: Namespace
+kind: ConfigMap
 metadata:
-  name: example-namespace
-`,
+  name: server-configuration
+  namespace: default
+data:
+  TYPESENSE_HEALTHY_READ_LAG: "1000"
+  TYPESENSE_HEALTHY_WRITE_LAG: "500"
+---
+apiVersion: ts.opentelekomcloud.com/v1alpha1
+kind: TypesenseCluster
+metadata:
+  name: srv-conf
+  namespace: default
+spec:
+  image: typesense/typesense:30.0.rc27-amd64
+  replicas: 3
+  storage:
+    size: 50Mi
+    storageClassName: standard
+  additionalServerConfiguration:
+    name: server-configuration
+    `,
   },
+  {
+    name: 'with Ingress',
+    description: 'Expose via Ingress+Reverse Proxy',
+    yaml: `apiVersion: ts.opentelekomcloud.com/v1alpha1
+kind: TypesenseCluster
+metadata:
+  name: public-basic
+  namespace: default
+spec:
+  image: typesense/typesense:30.0.rc27-amd64
+  replicas: 3
+  storage:
+    size: 50Mi
+    storageClassName: standard
+  ingress:
+    ingressClassName: traefik
+    host: host.example.com
+    clusterIssuer: lets-encrypt-prod
+    `,
+  },
+  {
+    name: 'with Ingress+CORS',
+    description: 'Expose via Ingress+Reverse Proxy to allowed referers',
+    yaml: `apiVersion: ts.opentelekomcloud.com/v1alpha1
+kind: TypesenseCluster
+metadata:
+  name: public-cors
+  namespace: default
+spec:
+  image: typesense/typesense:30.0.rc27-amd64
+  replicas: 3
+  storage:
+    size: 50Mi
+    storageClassName: standard
+  enableCors: true
+  corsDomains: "referer1.example.com,referer2.example.com"
+  ingress:
+    ingressClassName: traefik
+    host: host.example.com
+    referer: referer1.example.com
+    clusterIssuer: lets-encrypt-prod
+    `,
+  },
+  {
+    name: 'with Resources',
+    description: 'Explicitely Define Requests and Limits',
+    yaml: `apiVersion: ts.opentelekomcloud.com/v1alpha1
+kind: TypesenseCluster
+metadata:
+  name: sized
+  namespace: default
+spec:
+  image: typesense/typesense:30.0.rc27-amd64
+  replicas: 3
+  storage:
+    size: 50Mi
+    storageClassName: standard
+  resources:
+    limits:
+      cpu: "2000m"
+      memory: "4096Mi"
+    requests:
+      cpu: "100m"
+      memory: "64Mi"
+    `,
+  }
 ]
 
 export const getTemplateByName = (
